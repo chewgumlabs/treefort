@@ -135,6 +135,10 @@ async function handleDiscord(request, env) {
       return handleMyRoom(env, userId);
     }
 
+    if (command === "evict-room") {
+      return handleEvictRoom(env, interaction, userId);
+    }
+
     return discordReply("Unknown command.");
   }
 
@@ -262,6 +266,66 @@ async function handleMyRoom(env, userId) {
   }
 
   return discordReply(status);
+}
+
+const ADMIN_USER_ID = "1028469253139075152"; // shanecurry's Discord ID
+
+async function handleEvictRoom(env, interaction, userId) {
+  if (userId !== ADMIN_USER_ID) {
+    return discordReply("Only the Treefort owner can evict rooms.");
+  }
+
+  const targetId = interaction.data.options?.find((o) => o.name === "room")?.value;
+  if (!targetId) {
+    return discordReply("Specify a room ID (e.g. guest-003).");
+  }
+
+  const manifestFile = await fetchGitHubFile(env, "data/treefort.json");
+  if (!manifestFile) {
+    return discordReply("Could not read the manifest.");
+  }
+
+  const manifest = JSON.parse(manifestFile.content);
+  const door = manifest.doors.find((d) => d.id === targetId);
+
+  if (!door) {
+    return discordReply(`No door found with ID \`${targetId}\`.`);
+  }
+
+  if (door.type !== "guest" || door.status !== "occupied") {
+    return discordReply(`\`${targetId}\` is not an occupied guest room.`);
+  }
+
+  const oldName = door.name;
+  door.status = "vacant";
+  delete door.name;
+  delete door.moveInDate;
+  delete door.discordUserId;
+  delete door.access;
+
+  const newManifest = JSON.stringify(manifest, null, 2) + "\n";
+  const commitResult = await commitGitHubFile(env, "data/treefort.json", newManifest, manifestFile.sha, `Evict ${targetId}`);
+
+  if (!commitResult.ok) {
+    return discordReply("Failed to update manifest.");
+  }
+
+  // Delete room data
+  const roomFile = await fetchGitHubFile(env, `rooms/${targetId}/data.json`);
+  if (roomFile) {
+    await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/rooms/${targetId}/data.json`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "treefort-worker",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message: `Delete ${targetId} room data`, sha: roomFile.sha, branch: env.GITHUB_BRANCH }),
+    });
+  }
+
+  return discordReply(`Evicted **${oldName}** from \`${targetId}\`. Room is now vacant.`);
 }
 
 // ════════════════════════════════════════
@@ -421,13 +485,29 @@ function guestRoomTemplate(guestId, guestName, today) {
       { id: "cobalt", hex: "#3d57bb" }, { id: "grape", hex: "#7a4db0" },
       { id: "rose", hex: "#de6a8b" }, { id: "peach", hex: "#efb7a2" },
     ],
+    questPhase: "awaiting-key",
+    activeWave: 0,
+    completedWaves: [],
     assets: [],
     entrySpaceId: "main",
     spaces: [{
       id: "main", navigationKind: "room", title: `${guestName}'s Room`,
       description: "A blank room ready to be decorated.", revealState: "undrawn",
-      sceneArtAssetId: null, placeholderPrompt: "Draw your room to reveal it.",
-      fillPatches: [], surfacePatches: [], scoreGoals: [], regions: [], portalBindings: [],
+      sceneArtAssetId: null, placeholderPrompt: "",
+      fillPatches: [], surfacePatches: [],
+      scoreGoals: [
+        { id: "main-floor", labelId: "floor", label: "Floor", minCells: 64, wave: 1, hint: "...a room needs some floor if anyone is going to stand in it." },
+        { id: "main-rug", labelId: "rug", label: "Rug", minCells: 18, wave: 1, hint: "...something soft on the floor would help the room settle down." },
+        { id: "main-bed", labelId: "bed", label: "Bed", minCells: 24, wave: 1, hint: "...it needs a bed before anybody can sleep in here." },
+        { id: "main-desk", labelId: "desk", label: "Desk", minCells: 16, wave: 2, hint: "...a desk would give the room somewhere to think." },
+        { id: "main-chair", labelId: "chair", label: "Chair", minCells: 12, wave: 2, hint: "...a desk without a chair feels a little rude." },
+        { id: "main-lamp", labelId: "lamp", label: "Lamp", minCells: 8, wave: 2, hint: "...hmm... the new room looks nice but it could use a lamp maybe." },
+        { id: "main-window", labelId: "window", label: "Window", minCells: 16, wave: 3, hint: "...a window would make the room feel less boxed in." },
+        { id: "main-shelf", labelId: "shelf", label: "Shelf", minCells: 12, wave: 3, hint: "...somewhere high up for treasures would help." },
+        { id: "main-clock", labelId: "clock", label: "Clock", minCells: 8, wave: 3, hint: "...the room ought to know what time it is." },
+        { id: "main-poster-secret", labelId: "poster-secret", label: "Poster?", minCells: 18, wave: 4, hint: "...something strange on the wall might hide a passage." },
+      ],
+      regions: [], portalBindings: [],
     }],
   };
 }

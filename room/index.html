@@ -4,13 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Treefort Room</title>
-    <link rel="stylesheet" href="./styles.css?v=20260310bk" />
+    <link rel="stylesheet" href="./styles.css?v=20260310g" />
   </head>
   <body>
     <main class="room-page">
       <header class="room-bar">
         <p class="author-score author-score--header" id="author-score">0 / 0 pts</p>
         <h1 class="room-title" id="room-title">TREEFORT</h1>
+        <button class="room-link room-link--button guest-save-button hidden" id="guest-save-button" type="button">
+          Save Room
+        </button>
       </header>
 
       <section class="room-workspace" aria-labelledby="room-title">
@@ -123,6 +126,16 @@
                   <div class="note-card">
                     <p class="note-card__title" id="note-overlay-title"></p>
                     <p class="note-card__body" id="note-overlay-body"></p>
+                  </div>
+                </div>
+                <div class="quest-dialog hidden" id="quest-dialog" role="dialog" aria-label="Character dialog">
+                  <div class="quest-dialog__box">
+                    <img class="quest-dialog__portrait" id="quest-dialog-portrait" src="" alt="" />
+                    <div class="quest-dialog__content">
+                      <p class="quest-dialog__speaker" id="quest-dialog-speaker"></p>
+                      <p class="quest-dialog__text" id="quest-dialog-text"></p>
+                      <div class="quest-dialog__actions" id="quest-dialog-actions"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -277,6 +290,6 @@
     <p class="room-status hidden" id="stage-status">Import a room drawing from IcyAnimation.</p>
     <input id="import-room-input" type="file" accept=".room,.icy" hidden />
     <input id="art-gif-input" type="file" accept="image/gif" hidden />
-    <script src="./app.js?v=20260310bk"></script>
+    <script src="./app.js?v=20260310g"></script>
   </body>
 </html>

@@ -85,30 +85,6 @@
         "mode": "stalk"
       },
       "href": "./room/"
-    },
-    {
-      "id": "guild-hollow",
-      "type": "permanent",
-      "name": "Guild Hollow",
-      "floor": 3,
-      "access": {
-        "mode": "discord",
-        "serverLabel": "Treefort Clubhouse",
-        "inviteUrl": "https://discord.gg/treefort",
-        "requiredRoleLabel": "Clubhouse member"
-      }
-    },
-    {
-      "id": "knock-bungalow",
-      "type": "permanent",
-      "name": "Knock Bungalow",
-      "floor": 5,
-      "access": {
-        "mode": "knock",
-        "hint": "Demo passphrase: acorn",
-        "passphraseHash": "84f0ceca5ebebf54c45888a573b1c2380ec7e8b35289290af603644f04fb1e21",
-        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
-      }
     }
   ]
 }

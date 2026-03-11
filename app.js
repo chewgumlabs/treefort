@@ -553,6 +553,8 @@ knockForm.addEventListener("submit", async (event) => {
   if (room.access.encryptedHref) {
     try {
       const href = await decryptString(room.access.encryptedHref, passphrase);
+      const hash = await sha256Hex(passphrase);
+      sessionStorage.setItem("treefort-guest-auth", JSON.stringify({ guestId: room.id, passphraseHash: hash }));
       window.location.href = href;
       return;
     } catch {

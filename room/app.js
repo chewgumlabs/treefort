@@ -2717,6 +2717,262 @@ window.addEventListener("popstate", () => {
   renderActiveSpace();
 });
 
+// ════════════════════════════════════════
+//  Quest Dialog System
+// ════════════════════════════════════════
+
+const questDialogEl = document.getElementById("quest-dialog");
+const questDialogPortrait = document.getElementById("quest-dialog-portrait");
+const questDialogSpeaker = document.getElementById("quest-dialog-speaker");
+const questDialogText = document.getElementById("quest-dialog-text");
+const questDialogActions = document.getElementById("quest-dialog-actions");
+
+let _talkInterval = null;
+
+/**
+ * showDialog({ speaker, frames, text, actions })
+ *   speaker — display name ("Gum", "Chew", anything)
+ *   frames  — array of image URLs, 1 = static, 2 = talk anim
+ *   text    — dialog body string
+ *   actions — [{ label, onClick }]
+ */
+function showDialog({ speaker, frames, text, actions }) {
+  if (!questDialogEl) return;
+  if (_talkInterval) { clearInterval(_talkInterval); _talkInterval = null; }
+
+  questDialogPortrait.src = frames[0];
+  questDialogPortrait.alt = speaker;
+  questDialogSpeaker.textContent = speaker;
+  questDialogText.textContent = text;
+  questDialogActions.replaceChildren();
+
+  if (frames.length > 1) {
+    let frame = 0;
+    _talkInterval = setInterval(() => {
+      frame = 1 - frame;
+      questDialogPortrait.src = frames[frame];
+    }, 260);
+  }
+
+  for (const action of actions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "room-link room-link--button";
+    btn.textContent = action.label;
+    btn.addEventListener("click", () => {
+      if (_talkInterval) { clearInterval(_talkInterval); _talkInterval = null; }
+      questDialogEl.classList.add("hidden");
+      if (action.onClick) action.onClick();
+    });
+    questDialogActions.appendChild(btn);
+  }
+  questDialogEl.classList.remove("hidden");
+}
+
+const GUM_HAPPY = ["./assets/characters/gumDialA01.png", "./assets/characters/gumDialA02.png"];
+const GUM_SAD   = ["./assets/characters/gumDialB01.png", "./assets/characters/gumDialB02.png"];
+
+function buildParchment(guestId, guestName) {
+  return {
+    version: 1,
+    app: "TreeFort",
+    questPhase: "awaiting-key",
+    guestId,
+    guestName,
+    createdAt: new Date().toISOString(),
+    canvas: { width: 64, height: 64 },
+    instructions: "Draw a key. One chance. Forever.",
+  };
+}
+
+function downloadParchment() {
+  const guestId = manifest.roomId;
+  const guestName = manifest.owner.displayName;
+  const parchment = buildParchment(guestId, guestName);
+  const blob = new Blob([JSON.stringify(parchment, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${guestName}.Parchment`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function runQuestPhase() {
+  if (!manifest.questPhase) return;
+
+  const name = manifest.owner?.displayName || "friend";
+
+  if (manifest.questPhase === "awaiting-key") {
+    showDialog({
+      speaker: "Gum", frames: GUM_HAPPY,
+      text: `Oh! It's you, ${name}! Your room's not quite ready yet! I need you to bring me a drawing of a key, so I can unlock your Sticker Book! It must be drawn on special paper. Here, take this Parchment to Icy, she'll know what to do.`,
+      actions: [
+        { label: "Take the Parchment", onClick: downloadParchment },
+        { label: "Icy?", onClick: () => {
+          showDialog({
+            speaker: "Gum", frames: GUM_HAPPY,
+            text: `IcyAnimation is how we all draw our rooms! TreeFort is just for coloring. You can download IcyAnimation at github.com/chewgumlabs/IcyAnimation!`,
+            actions: [
+              { label: "Take the Parchment", onClick: downloadParchment },
+              { label: "Not yet", onClick: () => {} },
+            ],
+          });
+        }},
+      ],
+    });
+    return;
+  }
+
+  if (manifest.questPhase === "awaiting-room") {
+    showDialog({
+      speaker: "Gum", frames: GUM_SAD,
+      text: `I'm afraid I have some bad news... Your room is totally empty. No bed, no rug, not even a floor. If you could take this .Room file to Icy and draw your own floor, rug, and your own bed, then you can come back and you can color it all in here!`,
+      actions: [
+        { label: "Take the Room file", onClick: () => downloadRoomFile() },
+        { label: "Not yet", onClick: () => {} },
+      ],
+    });
+    return;
+  }
+}
+
+function downloadRoomFile() {
+  const guestName = manifest.owner.displayName;
+  const roomFile = {
+    version: 1,
+    app: "TreeFort",
+    questPhase: "awaiting-room",
+    guestId: manifest.roomId,
+    guestName,
+    createdAt: new Date().toISOString(),
+    canvas: { width: 256, height: 192 },
+    instructions: "Draw your room. Walls, floor, furniture — whatever you want.",
+  };
+  const blob = new Blob([JSON.stringify(roomFile, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${guestName}.Room`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ════════════════════════════════════════
+//  Guest Room Save
+// ════════════════════════════════════════
+
+const WORKER_SAVE_URL = "https://treefort-save.chewgum.workers.dev/save";
+const guestSaveButton = document.getElementById("guest-save-button");
+
+function gridToFillPatches(grid) {
+  const byColor = new Map();
+  for (let y = 0; y < manifest.stage.gridHeight; y++) {
+    let x = 0;
+    while (x < manifest.stage.gridWidth) {
+      const colorId = grid[y][x];
+      if (!colorId) { x++; continue; }
+      let w = 1;
+      while (x + w < manifest.stage.gridWidth && grid[y][x + w] === colorId) w++;
+      if (!byColor.has(colorId)) byColor.set(colorId, []);
+      byColor.get(colorId).push({ x, y, width: w, height: 1 });
+      x += w;
+    }
+  }
+  return [...byColor.entries()].map(([colorId, rects]) => ({ colorId, rects }));
+}
+
+function gridToSurfacePatches(labelGrid, supportGrid) {
+  const labelMap = { floor: "floor", "poster-secret": "poster" };
+  const byKey = new Map();
+  function addRect(surface, x, y, w) {
+    if (!byKey.has(surface)) byKey.set(surface, []);
+    byKey.get(surface).push({ x, y, width: w, height: 1 });
+  }
+  for (let y = 0; y < manifest.stage.gridHeight; y++) {
+    let x = 0;
+    while (x < manifest.stage.gridWidth) {
+      const labelId = labelGrid[y][x];
+      const surface = labelMap[labelId];
+      if (!surface) { x++; continue; }
+      let w = 1;
+      while (x + w < manifest.stage.gridWidth && labelGrid[y][x + w] === labelId) w++;
+      addRect(surface, x, y, w);
+      x += w;
+    }
+  }
+  for (let y = 0; y < manifest.stage.gridHeight; y++) {
+    let x = 0;
+    while (x < manifest.stage.gridWidth) {
+      const val = supportGrid[y][x];
+      if (val !== "solid") { x++; continue; }
+      let w = 1;
+      while (x + w < manifest.stage.gridWidth && supportGrid[y][x + w] === "solid") w++;
+      addRect("solid", x, y, w);
+      x += w;
+    }
+  }
+  return [...byKey.entries()].map(([surface, rects]) => ({ surface, rects }));
+}
+
+function compileManifestForSave() {
+  const compiled = JSON.parse(JSON.stringify(manifest));
+  compiled.updatedAt = new Date().toISOString().split("T")[0];
+  for (const space of compiled.spaces) {
+    const draft = draftBySpaceId.get(space.id);
+    if (!draft) continue;
+    space.fillPatches = gridToFillPatches(draft.fillGrid);
+    space.surfacePatches = gridToSurfacePatches(draft.labelGrid, draft.supportGrid);
+    if (Array.isArray(draft.regions)) space.regions = JSON.parse(JSON.stringify(draft.regions));
+    if (Array.isArray(draft.portalBindings)) space.portalBindings = JSON.parse(JSON.stringify(draft.portalBindings));
+  }
+  return compiled;
+}
+
+async function saveGuestRoom() {
+  const guestId = new URLSearchParams(window.location.search).get("guest");
+  if (!guestId) return;
+
+  const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
+  if (!auth || auth.guestId !== guestId) {
+    setStatus("Save failed — session expired. Go back to the tree and re-enter your passphrase.");
+    return;
+  }
+
+  guestSaveButton.disabled = true;
+  guestSaveButton.textContent = "Saving...";
+  setStatus("Saving room...");
+
+  try {
+    const roomData = compileManifestForSave();
+    const res = await fetch(WORKER_SAVE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guestId, passphraseHash: auth.passphraseHash, roomData }),
+    });
+
+    const result = await res.json();
+    if (res.ok && result.ok) {
+      setStatus("Room saved!");
+    } else {
+      setStatus(`Save failed: ${result.error || "unknown error"}`);
+    }
+  } catch (err) {
+    setStatus(`Save failed: ${err.message}`);
+  } finally {
+    guestSaveButton.disabled = false;
+    guestSaveButton.textContent = "Save Room";
+  }
+}
+
+if (guestSaveButton) {
+  guestSaveButton.addEventListener("click", () => void saveGuestRoom());
+}
+
 async function main() {
   const guestParam = new URLSearchParams(window.location.search).get("guest");
   const dataUrl = guestParam ? `../rooms/${guestParam}/data.json` : "./data/room.json";
@@ -2743,6 +2999,16 @@ async function main() {
   activeLabelLayer = "objects";
   writeLocationSpaceId(readLocationSpaceId(), true);
   renderShell();
+
+  // Show save button for guest rooms
+  if (guestParam && guestSaveButton) {
+    guestSaveButton.classList.remove("hidden");
+  }
+
+  // Run quest phase dialog after room loads
+  if (guestParam) {
+    runQuestPhase();
+  }
 }
 
 main().catch((error) => {

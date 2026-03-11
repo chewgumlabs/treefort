@@ -31,6 +31,19 @@ const commands = [
     name: "my-room",
     description: "Check on your guest room — days left, status, floor.",
   },
+  {
+    name: "evict-room",
+    description: "Admin only — evict a guest and free up their room.",
+    default_member_permissions: "0",
+    options: [
+      {
+        name: "room",
+        description: "The room ID to evict (e.g. guest-003)",
+        type: 3, // STRING
+        required: true,
+      },
+    ],
+  },
 ];
 
 const res = await fetch(`https://discord.com/api/v10/applications/${APP_ID}/commands`, {
