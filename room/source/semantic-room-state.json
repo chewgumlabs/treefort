@@ -1,0 +1,248 @@
+{
+  "schema": "treefort-semantic-room-state",
+  "schemaVersion": 1,
+  "roomId": "my-room",
+  "roomEngine": "semantic-scene-v2",
+  "owner": {
+    "displayName": "My Room",
+    "githubLogin": "demo-owner",
+    "repo": "demo-owner/demo-owner.github.io",
+    "siteUrl": "./"
+  },
+  "presentation": {
+    "eyebrow": "Treefort demo room",
+    "title": "My Room",
+    "description": "This room is drawn in IcyAnimation and annotated with lightweight authoring data."
+  },
+  "updatedAt": "2026-03-09",
+  "links": [
+    {
+      "label": "Treefort",
+      "href": "../index.html"
+    }
+  ],
+  "stage": {
+    "width": 256,
+    "height": 192,
+    "tileWidth": 4,
+    "tileHeight": 4,
+    "gridWidth": 64,
+    "gridHeight": 48,
+    "gutterLeft": 0,
+    "gutterRight": 0
+  },
+  "limits": {
+    "maxSpaces": 12,
+    "maxLinks": 6,
+    "maxPaletteColors": 16,
+    "maxAssetCount": 64,
+    "maxAssetBytesPerFile": 4194304,
+    "maxAssetBytesTotal": 33554432,
+    "maxFillPatchesPerSpace": 64,
+    "maxSurfacePatchesPerSpace": 64,
+    "maxRegionsPerSpace": 32,
+    "maxPortalBindingsPerSpace": 24,
+    "maxRectsPerPatch": 24,
+    "maxRectsPerRegion": 24,
+    "maxTagsPerEntry": 12,
+    "maxLabelLength": 48,
+    "maxTitleLength": 64,
+    "maxBodyLength": 280,
+    "maxCaptionLength": 160,
+    "maxClickHintLength": 96,
+    "allowedAssetMimeTypes": [
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+      "application/json"
+    ],
+    "allowedAssetExtensions": [
+      ".png",
+      ".gif",
+      ".webp",
+      ".svg",
+      ".json"
+    ]
+  },
+  "palette": [
+    {
+      "id": "soot",
+      "hex": "#17191d"
+    },
+    {
+      "id": "pearl",
+      "hex": "#f4f1e8"
+    },
+    {
+      "id": "fog",
+      "hex": "#b9b2a8"
+    },
+    {
+      "id": "bark",
+      "hex": "#6a4e40"
+    },
+    {
+      "id": "ember",
+      "hex": "#b44034"
+    },
+    {
+      "id": "tangerine",
+      "hex": "#ef8f50"
+    },
+    {
+      "id": "sun",
+      "hex": "#f5c74e"
+    },
+    {
+      "id": "lemon",
+      "hex": "#f2df73"
+    },
+    {
+      "id": "moss",
+      "hex": "#6f9440"
+    },
+    {
+      "id": "sky",
+      "hex": "#4d9fe7"
+    },
+    {
+      "id": "mint",
+      "hex": "#2db8a1"
+    },
+    {
+      "id": "teal",
+      "hex": "#2b7f8c"
+    },
+    {
+      "id": "cobalt",
+      "hex": "#3d57bb"
+    },
+    {
+      "id": "grape",
+      "hex": "#7a4db0"
+    },
+    {
+      "id": "rose",
+      "hex": "#de6a8b"
+    },
+    {
+      "id": "peach",
+      "hex": "#efb7a2"
+    }
+  ],
+  "assets": [
+    {
+      "id": "main-room-lineart",
+      "kind": "scene-lineart",
+      "path": "assets/imports/icy/main-room-lineart.json",
+      "bytes": 12481,
+      "mimeType": "application/json",
+      "width": 256,
+      "height": 192,
+      "source": "IcyAnimation:testroom.icy"
+    }
+  ],
+  "entrySpaceId": "main",
+  "spaces": [
+    {
+      "id": "main",
+      "navigationKind": "room",
+      "title": "demo-owner's bedroom",
+      "description": "A blank room scene ready for paint, labels, and hidden-room authoring.",
+      "revealState": "drawn",
+      "sceneArtAssetId": "main-room-lineart",
+      "placeholderPrompt": "Draw this room in IcyAnimation to reveal it.",
+      "fillPatches": [],
+      "surfacePatches": [],
+      "scoreGoals": [
+        {
+          "id": "main-floor",
+          "labelId": "floor",
+          "label": "Floor",
+          "minCells": 64,
+          "hint": "...a room needs some floor if anyone is going to stand in it."
+        },
+        {
+          "id": "main-bed",
+          "labelId": "bed",
+          "label": "Bed",
+          "minCells": 24,
+          "hint": "...it needs a bed before anybody can sleep in here."
+        },
+        {
+          "id": "main-rug",
+          "labelId": "rug",
+          "label": "Rug",
+          "minCells": 18,
+          "hint": "...something soft on the floor would help the room settle down."
+        },
+        {
+          "id": "main-desk",
+          "labelId": "desk",
+          "label": "Desk",
+          "minCells": 16,
+          "hint": "...a desk would give the room somewhere to think."
+        },
+        {
+          "id": "main-chair",
+          "labelId": "chair",
+          "label": "Chair",
+          "minCells": 12,
+          "hint": "...a desk without a chair feels a little rude."
+        },
+        {
+          "id": "main-lamp",
+          "labelId": "lamp",
+          "label": "Lamp",
+          "minCells": 8,
+          "hint": "...hmm... the new room looks nice but it could use a lamp maybe."
+        },
+        {
+          "id": "main-window",
+          "labelId": "window",
+          "label": "Window",
+          "minCells": 16,
+          "hint": "...a window would make the room feel less boxed in."
+        },
+        {
+          "id": "main-shelf",
+          "labelId": "shelf",
+          "label": "Shelf",
+          "minCells": 12,
+          "hint": "...somewhere high up for treasures would help."
+        },
+        {
+          "id": "main-clock",
+          "labelId": "clock",
+          "label": "Clock",
+          "minCells": 8,
+          "hint": "...the room ought to know what time it is."
+        },
+        {
+          "id": "main-poster-secret",
+          "labelId": "poster-secret",
+          "label": "Poster?",
+          "minCells": 18,
+          "hint": "...something strange on the wall might hide a passage."
+        }
+      ],
+      "regions": [],
+      "portalBindings": []
+    },
+    {
+      "id": "bonus-void",
+      "navigationKind": "bonus",
+      "title": "bonus void",
+      "description": "A final tucked-away room that sits outside the normal secret-room graph.",
+      "revealState": "undrawn",
+      "sceneArtAssetId": null,
+      "placeholderPrompt": "Draw the bonus void room in IcyAnimation to reveal it.",
+      "fillPatches": [],
+      "surfacePatches": [],
+      "scoreGoals": [],
+      "regions": [],
+      "portalBindings": []
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "version": 2,
+  "treefort": {
+    "title": "The giant tree with everyone's door on it.",
+    "lede": "Each door represents a kid's own room. The tree is the shared hub.",
+    "guestRules": {
+      "maxGuests": 9,
+      "stayDays": 7,
+      "warnDay": 5,
+      "readonlyDay": 6,
+      "exportDay": 7,
+      "maxSizeBytes": 52428800
+    }
+  },
+  "doors": [
+    {
+      "id": "guest-001",
+      "type": "guest",
+      "status": "occupied",
+      "name": "Mia's Room",
+      "floor": 0,
+      "moveInDate": "2026-03-07",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask Mia!",
+        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
+      }
+    },
+    {
+      "id": "guest-002",
+      "type": "guest",
+      "status": "occupied",
+      "floor": 0,
+      "name": "TestKid's Room",
+      "moveInDate": "2026-03-11",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask TestKid!",
+        "passphraseHash": "fcfd075cbe367c158d5cfaa31fa06656a3e68f626388d96ee81b35dda4310b58",
+        "encryptedHref": "ZJx91karfASWW6YuRuLDUWMKj/VcFHqlMw6gMv5vWHlBgUZiGr2JdNIg1afQaxD2XdAEvtonbXmF9jasxL4="
+      }
+    },
+    {
+      "id": "guest-003",
+      "type": "guest",
+      "status": "vacant",
+      "floor": 0
+    },
+    {
+      "id": "guest-004",
+      "type": "guest",
+      "status": "occupied",
+      "name": "Jake's Hideout",
+      "floor": 1,
+      "moveInDate": "2026-03-05",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask Jake!",
+        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
+      }
+    },
+    {
+      "id": "guest-005",
+      "type": "guest",
+      "status": "vacant",
+      "floor": 1
+    },
+    {
+      "id": "guest-006",
+      "type": "guest",
+      "status": "vacant",
+      "floor": 1
+    },
+    {
+      "id": "guest-007",
+      "type": "guest",
+      "status": "vacant",
+      "floor": 2
+    },
+    {
+      "id": "guest-008",
+      "type": "guest",
+      "status": "vacant",
+      "floor": 2
+    },
+    {
+      "id": "guest-009",
+      "type": "guest",
+      "status": "occupied",
+      "name": "Lily's Corner",
+      "floor": 2,
+      "moveInDate": "2026-03-04",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask Lily!",
+        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
+      }
+    },
+    {
+      "id": "my-room",
+      "type": "permanent",
+      "name": "My Room",
+      "floor": 4,
+      "access": {
+        "mode": "stalk"
+      },
+      "href": "./room/"
+    },
+    {
+      "id": "guild-hollow",
+      "type": "permanent",
+      "name": "Guild Hollow",
+      "floor": 3,
+      "access": {
+        "mode": "discord",
+        "serverLabel": "Treefort Clubhouse",
+        "inviteUrl": "https://discord.gg/treefort",
+        "requiredRoleLabel": "Clubhouse member"
+      }
+    },
+    {
+      "id": "knock-bungalow",
+      "type": "permanent",
+      "name": "Knock Bungalow",
+      "floor": 5,
+      "access": {
+        "mode": "knock",
+        "hint": "Demo passphrase: acorn",
+        "passphraseHash": "84f0ceca5ebebf54c45888a573b1c2380ec7e8b35289290af603644f04fb1e21",
+        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "treefort-icy-import-report",
+  "schemaVersion": 1,
+  "roomId": "my-room",
+  "dryRun": false,
+  "importedAt": "2026-03-10T16:11:22.738Z",
+  "importedAssets": [
+    {
+      "assetId": "main-room-lineart",
+      "kind": "scene-lineart",
+      "sourcePath": "/Volumes/Storage/TreeFort/testroom.icy",
+      "targetPath": "assets/imports/icy/main-room-lineart.json",
+      "bytes": 12481
+    }
+  ],
+  "wroteStatePath": "room/source/semantic-room-state.json",
+  "wroteManifestPath": "room/data/room.json"
+}

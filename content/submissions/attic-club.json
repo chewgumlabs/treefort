@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "attic-club",
+  "submittedAt": "2026-03-09",
+  "owner": {
+    "githubLogin": "attic-club",
+    "repo": "attic-club/attic-club.github.io",
+    "siteUrl": "https://attic-club.github.io/",
+    "roomManifestUrl": "https://attic-club.github.io/data/room.json"
+  },
+  "room": {
+    "roomId": "attic-club",
+    "schemaVersion": 1
+  },
+  "acknowledgements": {
+    "age13Plus": true,
+    "publicSite": true,
+    "noPrivateInfo": true
+  },
+  "door": {
+    "name": "Attic Club",
+    "caption": "Waiting for approval before this room appears in the tree.",
+    "destinationLabel": "Pending review",
+    "neighborhood": "upper-branches",
+    "access": {
+      "mode": "stalk"
+    }
+  }
+}

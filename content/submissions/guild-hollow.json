@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "guild-hollow",
+  "submittedAt": "2026-03-09",
+  "owner": {
+    "githubLogin": "guild-hollow",
+    "repo": "guild-hollow/guild-hollow.github.io",
+    "siteUrl": "./room/",
+    "roomManifestUrl": "./content/verified-room-manifests/guild-hollow.json"
+  },
+  "room": {
+    "roomId": "guild-hollow",
+    "schemaVersion": 1
+  },
+  "acknowledgements": {
+    "age13Plus": true,
+    "publicSite": true,
+    "noPrivateInfo": true
+  },
+  "door": {
+    "name": "Guild Hollow",
+    "caption": "Join the Treefort Clubhouse on Discord before this door opens from the hub.",
+    "destinationLabel": "Treefort Clubhouse",
+    "neighborhood": "starter-canopy",
+    "access": {
+      "mode": "discord",
+      "guildId": "123456789012345678",
+      "serverLabel": "Treefort Clubhouse",
+      "inviteUrl": "https://discord.gg/treefort",
+      "requiredRoleLabel": "Clubhouse member"
+    }
+  }
+}

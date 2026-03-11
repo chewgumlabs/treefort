@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-03-09",
+  "requestId": "publish-my-room-2026-03-09T15-45-00Z",
+  "roomId": "my-room",
+  "target": {
+    "githubOwner": "demo-owner",
+    "repoName": "demo-owner.github.io",
+    "branch": "main",
+    "siteType": "user",
+    "baseUrl": "https://demo-owner.github.io/"
+  },
+  "commit": {
+    "message": "Update room manifest and safe assets for my-room",
+    "authorLabel": "Treefort Bridge"
+  },
+  "writes": [
+    {
+      "path": "data/room.json",
+      "kind": "json",
+      "source": "room-manifest",
+      "bytes": 20138,
+      "sha256": "e4e9e31b20ad827a936def1deaecf80b5abf1a7448858b145e2676af33f1d7bf"
+    },
+    {
+      "path": "data/assets.json",
+      "kind": "json",
+      "source": "asset-manifest",
+      "bytes": 1966,
+      "sha256": "27228b1b4530c5b9b3b134b7e8e16bb8d6963a75033ecd38fd83c2eac520d254"
+    },
+    {
+      "path": "assets/imports/icy/main-room-lineart.json",
+      "kind": "asset",
+      "assetId": "main-room-lineart",
+      "mimeType": "application/json",
+      "bytes": 12481,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "deletes": [
+    "assets/imports/icy/old-room-scene.png"
+  ],
+  "notes": [
+    "This is a dry-run publish plan only.",
+    "Runtime files are excluded by contract.",
+    "Imported scene assets should appear under assets/imports/icy/ in a real bridge run."
+  ]
+}

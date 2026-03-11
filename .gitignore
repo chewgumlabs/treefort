@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+.wrangler/
+*.mov
+*.mp4
+*.tflite
+*.task

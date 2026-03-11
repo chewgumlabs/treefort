@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "quiet-loft",
+  "status": "approved",
+  "reviewedAt": "2026-03-09",
+  "reviewedBy": "chewgum",
+  "notes": "Approved as a lock-mode example for the hub.",
+  "listing": {
+    "sortOrder": 20,
+    "position": {
+      "x": 58,
+      "y": 26
+    }
+  },
+  "verification": {
+    "verifiedAt": "2026-03-09",
+    "verifiedRoomManifestPath": "content/verified-room-manifests/quiet-loft.json",
+    "roomSchemaVersion": 1,
+    "snapshotSha256": "a364bfc907979f25d88d3f9d3e764c433b15d5ddf303dd86b36ec89ee0504433",
+    "sourceRoomManifestUrl": "./content/verified-room-manifests/quiet-loft.json"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "treefort-room-package",
+  "schemaVersion": 1,
+  "roomId": "my-room",
+  "spaceId": "main",
+  "outputPath": "/Volumes/Storage/TreeFort/build/room-packages/my-room-main.room",
+  "includesUnderlay": false,
+  "sceneAssetPath": "assets/imports/icy/main-room-lineart.json"
+}

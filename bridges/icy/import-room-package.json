@@ -1,0 +1,15 @@
+{
+  "schema": "treefort-icy-import-plan",
+  "schemaVersion": 2,
+  "roomId": "my-room",
+  "imports": [
+    {
+      "input": "../../build/room-packages/my-room-main.room",
+      "assetId": "main-room-lineart",
+      "kind": "scene-lineart",
+      "assignScene": {
+        "spaceId": "main"
+      }
+    }
+  ]
+}

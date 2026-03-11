@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "my-room",
+  "status": "approved",
+  "reviewedAt": "2026-03-09",
+  "reviewedBy": "chewgum",
+  "notes": "Starter room used to wire the first sample Pages flow.",
+  "listing": {
+    "sortOrder": 10,
+    "position": {
+      "x": 24,
+      "y": 56
+    }
+  },
+  "verification": {
+    "verifiedAt": "2026-03-09",
+    "verifiedRoomManifestPath": "content/verified-room-manifests/my-room.json",
+    "roomSchemaVersion": 1,
+    "snapshotSha256": "cdafd1ac282d41516e38fbba8b8c00cb7364581f42b2a7721cd23f49e16f0d81",
+    "sourceRoomManifestUrl": "./content/verified-room-manifests/my-room.json"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "quiet-loft",
+  "submittedAt": "2026-03-09",
+  "owner": {
+    "githubLogin": "quiet-loft",
+    "repo": "quiet-loft/quiet-loft.github.io",
+    "siteUrl": "./room/",
+    "roomManifestUrl": "./content/verified-room-manifests/quiet-loft.json"
+  },
+  "room": {
+    "roomId": "quiet-loft",
+    "schemaVersion": 1
+  },
+  "acknowledgements": {
+    "age13Plus": true,
+    "publicSite": true,
+    "noPrivateInfo": true
+  },
+  "door": {
+    "name": "Quiet Loft",
+    "caption": "Visible in the tree, but this door does not open from the hub.",
+    "destinationLabel": "Private from hub",
+    "neighborhood": "starter-canopy",
+    "access": {
+      "mode": "lock"
+    }
+  }
+}

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Treefort Room</title>
+    <link rel="stylesheet" href="./styles.css?v=20260310bk" />
+  </head>
+  <body>
+    <main class="room-page">
+      <header class="room-bar">
+        <p class="author-score author-score--header" id="author-score">0 / 0 pts</p>
+        <h1 class="room-title" id="room-title">TREEFORT</h1>
+      </header>
+
+      <section class="room-workspace" aria-labelledby="room-title">
+        <aside class="room-sidebar room-sidebar--left" aria-label="Room authoring tools">
+          <section class="window left-panel-window is-collapsed" id="left-panel-window">
+            <div class="window-bar" id="left-panel-title">Submenu</div>
+            <div class="window-body window-body--panel" id="left-panel-body">
+              <div class="author-panel" id="paint-panel" aria-label="Paint panel">
+                <div class="swatch-strip" id="paint-swatches"></div>
+              </div>
+              <div class="author-panel hidden" id="label-panel" aria-label="Label panel">
+                <div class="label-strip" id="label-brushes"></div>
+              </div>
+              <div class="author-panel hidden" id="interactive-panel" aria-label="Interactive panel">
+                <div class="interactive-selected">
+                  <p class="interactive-selected__label">Object Select</p>
+                  <div class="interactive-selected__rule" aria-hidden="true"></div>
+                  <div class="label-key__swatch interactive-selected__swatch interactive-selected__swatch--empty" id="interactive-selected-swatch" aria-hidden="true"></div>
+                  <p class="interactive-selected__value" id="interactive-selected-value">None</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="window interactive-field-window hidden" id="interaction-title-window">
+            <div class="window-bar">Title</div>
+            <div class="window-body interactive-field-window__body">
+              <textarea id="interaction-title" rows="2" maxlength="64" placeholder="Shows on Mouse Hover"></textarea>
+            </div>
+          </section>
+
+          <section class="window interactive-field-window hidden" id="interaction-description-window">
+            <div class="window-bar">Description</div>
+            <div class="window-body interactive-field-window__body">
+              <textarea
+                id="interaction-description"
+                rows="5"
+                maxlength="280"
+                placeholder="Descriptions Appear in the Message Window"
+              ></textarea>
+            </div>
+          </section>
+
+          <section class="window art-upload-window interactive-field-window hidden" id="art-upload-window">
+            <div class="window-bar">GIF File</div>
+            <div class="window-body art-upload-body">
+              <button class="art-upload-button" id="art-upload-button" type="button">Load GIF</button>
+              <p class="art-upload-status" id="art-upload-status"></p>
+            </div>
+          </section>
+
+          <section class="window interactive-field-window hidden" id="interaction-target-field">
+            <div class="window-bar">Target Room</div>
+            <div class="window-body interactive-field-window__body">
+              <select id="interaction-secret-target"></select>
+            </div>
+          </section>
+
+          <section class="window interactive-action-window hidden" id="interaction-action-window">
+            <div class="window-bar">Action</div>
+            <div class="window-body window-body--panel">
+              <div class="interaction-type-strip" id="interaction-type-strip">
+                <button class="interaction-type interaction-type--sprite interaction-type--art" type="button" data-interaction-type="art" aria-label="Art" title="Art"></button>
+                <button class="interaction-type interaction-type--sprite interaction-type--words" type="button" data-interaction-type="words" aria-label="Words" title="Words"></button>
+                <button class="interaction-type interaction-type--sprite interaction-type--secret-room" type="button" data-interaction-type="secret-room" aria-label="Secret Room" title="Secret Room"></button>
+              </div>
+            </div>
+          </section>
+
+          <section class="window interactive-save-window hidden" id="interaction-save-window">
+            <div class="window-bar">Save</div>
+            <div class="window-body window-body--panel">
+              <div class="interactive-actions">
+                <button class="room-link room-link--button" id="save-interaction-button" type="button">
+                  Save
+                </button>
+                <button class="room-link room-link--button" id="clear-interaction-button" type="button">
+                  Clear
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="window support-window hidden" id="support-window">
+            <div class="window-bar">Support</div>
+            <div class="window-body window-body--panel">
+              <div class="support-strip" id="support-brushes"></div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="room-column">
+          <section class="window stage-window">
+            <div class="window-bar window-bar--stage">
+              <p class="scene-title" id="scene-title">My Room</p>
+            </div>
+            <div class="window-body window-body--stage">
+              <div class="room-stage" id="room-stage">
+                <canvas class="fill-layer" id="fill-layer" width="256" height="192" aria-hidden="true"></canvas>
+                <canvas class="scene-canvas hidden" id="scene-canvas" width="256" height="192" aria-hidden="true"></canvas>
+                <img class="scene-lineart hidden" id="scene-lineart" alt="" />
+                <canvas class="label-layer hidden" id="label-layer" width="256" height="192" aria-hidden="true"></canvas>
+                <canvas class="editor-layer hidden" id="editor-layer" width="256" height="192" aria-label="Room editor overlay"></canvas>
+                <div class="region-layer" id="region-layer"></div>
+                <div class="hover-title hidden" id="hover-title" aria-hidden="true"></div>
+                <div class="stage-overlay gif-overlay hidden" id="gif-overlay" role="dialog" aria-label="Animation playback">
+                  <img id="gif-overlay-image" alt="Room animation" />
+                </div>
+                <div class="stage-overlay note-overlay hidden" id="note-overlay" role="dialog" aria-label="Room note">
+                  <div class="note-card">
+                    <p class="note-card__title" id="note-overlay-title"></p>
+                    <p class="note-card__body" id="note-overlay-body"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="window dock-window">
+            <div class="window-bar">Message</div>
+            <div class="window-body">
+              <p class="critic-dialog" id="critic-dialog">
+                <span class="critic-dialog__text" id="critic-dialog-text">...draw the room, then teach it what everything is.</span>
+              </p>
+            </div>
+          </section>
+        </section>
+
+        <aside class="room-sidebar room-sidebar--right" aria-label="Room tools">
+          <section class="window tool-window">
+            <div class="window-bar">Tools</div>
+            <div class="window-body">
+              <div class="author-tools" id="author-tools" aria-label="Author tools">
+                <button
+                  class="author-tool author-tool--icon"
+                  id="tool-view"
+                  type="button"
+                  data-tool="view"
+                  aria-label="View"
+                  title="View"
+                >
+                  <img
+                    class="author-tool__icon-image"
+                    src="./assets/ui/View.png"
+                    data-default-src="./assets/ui/View.png"
+                    data-pressed-src="./assets/ui/ViewClicked.png"
+                    alt=""
+                  />
+                </button>
+                <button
+                  class="author-tool author-tool--icon"
+                  id="tool-paint"
+                  type="button"
+                  data-tool="paint"
+                  aria-label="Paint"
+                  title="Paint"
+                >
+                  <img
+                    class="author-tool__icon-image"
+                    src="./assets/ui/Paint.png"
+                    data-default-src="./assets/ui/Paint.png"
+                    data-pressed-src="./assets/ui/PaintClicked.png"
+                    alt=""
+                  />
+                </button>
+                <button
+                  class="author-tool author-tool--icon"
+                  id="tool-labels"
+                  type="button"
+                  data-tool="labels"
+                  aria-label="Labels"
+                  title="Labels"
+                >
+                  <img
+                    class="author-tool__icon-image"
+                    src="./assets/ui/Label.png"
+                    data-default-src="./assets/ui/Label.png"
+                    data-pressed-src="./assets/ui/LabelClicked.png"
+                    alt=""
+                  />
+                </button>
+                <button
+                  class="author-tool author-tool--icon"
+                  id="tool-interactive"
+                  type="button"
+                  data-tool="interactive"
+                  aria-label="Interactive"
+                  title="Interactive"
+                >
+                  <img
+                    class="author-tool__icon-image"
+                    src="./assets/ui/Interact.png"
+                    data-default-src="./assets/ui/Interact.png"
+                    data-pressed-src="./assets/ui/InteractClick.png"
+                    alt=""
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="window nav-window">
+            <div class="window-bar">Navigate</div>
+            <div class="window-body">
+              <div class="nav-tools" aria-label="Room navigation">
+                <button class="nav-tool nav-tool--icon" id="nav-forward" type="button" aria-label="Forward" title="Forward">
+                  <img class="nav-tool__icon-image" src="./assets/ui/forward.png" alt="" />
+                </button>
+                <button
+                  class="nav-tool nav-tool--icon"
+                  id="nav-backward"
+                  type="button"
+                  aria-label="Backward"
+                  title="Backward"
+                >
+                  <img class="nav-tool__icon-image" src="./assets/ui/backward.png" alt="" />
+                </button>
+                <button
+                  class="nav-tool nav-tool--icon"
+                  id="nav-treefort"
+                  type="button"
+                  aria-label="TreeFort"
+                  title="TreeFort"
+                >
+                  <img class="nav-tool__icon-image" src="./assets/ui/treefort.png" alt="" />
+                </button>
+                <button class="nav-tool nav-tool--icon" id="nav-bonus" type="button" aria-label="Bonus" title="Bonus">
+                  <img class="nav-tool__icon-image" src="./assets/ui/question.png" alt="" />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="window file-window">
+            <div class="window-bar">Room</div>
+            <div class="window-body">
+              <div class="nav-tools nav-tools--pair" aria-label="Room files">
+                <button
+                  class="nav-tool nav-tool--icon"
+                  id="import-room-button"
+                  type="button"
+                  aria-label="Import room"
+                  title="Import room"
+                >
+                  <img class="nav-tool__icon-image" src="./assets/ui/import.png" alt="" />
+                </button>
+                <button
+                  class="nav-tool nav-tool--icon"
+                  id="export-room-button"
+                  type="button"
+                  aria-label="Export room"
+                  title="Export room"
+                  disabled
+                >
+                  <img class="nav-tool__icon-image" src="./assets/ui/export.png" alt="" />
+                </button>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <p class="room-status hidden" id="stage-status">Import a room drawing from IcyAnimation.</p>
+    <input id="import-room-input" type="file" accept=".room,.icy" hidden />
+    <input id="art-gif-input" type="file" accept="image/gif" hidden />
+    <script src="./app.js?v=20260310bk"></script>
+  </body>
+</html>

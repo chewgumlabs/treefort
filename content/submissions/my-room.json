@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "my-room",
+  "submittedAt": "2026-03-09",
+  "owner": {
+    "githubLogin": "demo-owner",
+    "repo": "demo-owner/demo-owner.github.io",
+    "siteUrl": "./room/",
+    "roomManifestUrl": "./content/verified-room-manifests/my-room.json"
+  },
+  "room": {
+    "roomId": "my-room",
+    "schemaVersion": 1
+  },
+  "acknowledgements": {
+    "age13Plus": true,
+    "publicSite": true,
+    "noPrivateInfo": true
+  },
+  "door": {
+    "name": "My Room",
+    "caption": "Open to visitors while the first room template comes together.",
+    "destinationLabel": "./room/",
+    "neighborhood": "starter-canopy",
+    "access": {
+      "mode": "stalk"
+    }
+  }
+}

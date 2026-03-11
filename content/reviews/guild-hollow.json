@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "guild-hollow",
+  "status": "approved",
+  "reviewedAt": "2026-03-09",
+  "reviewedBy": "chewgum",
+  "notes": "Approved as the Discord-gated hub example.",
+  "listing": {
+    "sortOrder": 25,
+    "position": {
+      "x": 44,
+      "y": 42
+    }
+  },
+  "verification": {
+    "verifiedAt": "2026-03-09",
+    "verifiedRoomManifestPath": "content/verified-room-manifests/guild-hollow.json",
+    "roomSchemaVersion": 1,
+    "snapshotSha256": "46b13dac12db2035a2b792c11e361e3fd65e9d1b231f9ef30525b8a28d68dfc2",
+    "sourceRoomManifestUrl": "./content/verified-room-manifests/guild-hollow.json"
+  }
+}

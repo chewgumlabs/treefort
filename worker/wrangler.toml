@@ -1,0 +1,8 @@
+name = "treefort-save"
+main = "save-room.js"
+compatibility_date = "2024-01-01"
+
+# Set these in the Cloudflare dashboard under Workers > Settings > Variables
+# GITHUB_TOKEN = "github_pat_..."
+# GITHUB_REPO = "your-username/treefort"
+# GITHUB_BRANCH = "main"

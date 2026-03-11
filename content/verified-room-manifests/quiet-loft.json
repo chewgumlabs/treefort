@@ -1,0 +1,129 @@
+{
+  "schema": "treefort-semantic-room",
+  "schemaVersion": 1,
+  "roomId": "quiet-loft",
+  "roomEngine": "semantic-scene-v2",
+  "owner": {
+    "displayName": "Quiet Loft",
+    "githubLogin": "quiet-loft",
+    "repo": "quiet-loft/quiet-loft.github.io",
+    "siteUrl": "./room/"
+  },
+  "presentation": {
+    "eyebrow": "Quiet Loft room",
+    "title": "Quiet Loft",
+    "description": "This room is drawn in IcyAnimation and annotated with lightweight authoring data."
+  },
+  "updatedAt": "2026-03-09",
+  "links": [
+    {
+      "label": "Treefort",
+      "href": "../index.html"
+    }
+  ],
+  "stage": {
+    "width": 256,
+    "height": 192,
+    "tileWidth": 4,
+    "tileHeight": 4,
+    "gridWidth": 64,
+    "gridHeight": 48,
+    "gutterLeft": 0,
+    "gutterRight": 0
+  },
+  "limits": {
+    "maxSpaces": 12,
+    "maxLinks": 6,
+    "maxPaletteColors": 16,
+    "maxAssetCount": 64,
+    "maxAssetBytesPerFile": 4194304,
+    "maxAssetBytesTotal": 33554432,
+    "maxFillPatchesPerSpace": 64,
+    "maxSurfacePatchesPerSpace": 64,
+    "maxRegionsPerSpace": 32,
+    "maxPortalBindingsPerSpace": 24,
+    "maxRectsPerPatch": 24,
+    "maxRectsPerRegion": 24,
+    "maxTagsPerEntry": 12,
+    "maxLabelLength": 48,
+    "maxTitleLength": 64,
+    "maxBodyLength": 280,
+    "maxCaptionLength": 160,
+    "maxClickHintLength": 96,
+    "allowedAssetMimeTypes": [
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+      "application/json"
+    ],
+    "allowedAssetExtensions": [
+      ".png",
+      ".gif",
+      ".webp",
+      ".svg",
+      ".json"
+    ]
+  },
+  "palette": [
+    {
+      "id": "paper",
+      "hex": "#eef6bf"
+    },
+    {
+      "id": "leaf",
+      "hex": "#a0c24f"
+    },
+    {
+      "id": "pine",
+      "hex": "#34563b"
+    },
+    {
+      "id": "mud",
+      "hex": "#7f5630"
+    },
+    {
+      "id": "grape",
+      "hex": "#8b6ee2"
+    },
+    {
+      "id": "sun",
+      "hex": "#f4c43c"
+    },
+    {
+      "id": "sky",
+      "hex": "#88d4f0"
+    },
+    {
+      "id": "rose",
+      "hex": "#db6d8f"
+    }
+  ],
+  "assets": [
+    {
+      "id": "main-room-lineart",
+      "kind": "scene-lineart",
+      "path": "assets/imports/icy/main-room-lineart.json",
+      "bytes": 12481,
+      "mimeType": "application/json",
+      "width": 256,
+      "height": 192,
+      "source": "IcyAnimation:testroom.icy"
+    }
+  ],
+  "entrySpaceId": "main",
+  "spaces": [
+    {
+      "id": "main",
+      "title": "My Room",
+      "description": "A blank room scene ready for paint, labels, and hidden-room authoring.",
+      "revealState": "drawn",
+      "sceneArtAssetId": "main-room-lineart",
+      "placeholderPrompt": "Draw this room in IcyAnimation to reveal it.",
+      "fillPatches": [],
+      "surfacePatches": [],
+      "regions": [],
+      "portalBindings": []
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "schema": "treefort-room-package",
+  "schemaVersion": 1,
+  "containerExtension": ".room",
+  "roomId": "my-room",
+  "spaceId": "main",
+  "sceneAssetId": "main-room-lineart",
+  "sceneRevision": 3,
+  "metadataRevision": 7,
+  "icyProject": {
+    "version": 1,
+    "app": "IcyAnimation",
+    "savedAt": "2026-03-09T18:15:00.000Z",
+    "settings": {
+      "currentFrameIndex": 0,
+      "activeLayerIndex": 0,
+      "tool": "pen",
+      "fps": 12,
+      "editTarget": "frame",
+      "layerVisibility": [
+        true,
+        true,
+        true
+      ],
+      "layerPaletteIndexes": [
+        0,
+        1,
+        2
+      ]
+    },
+    "frames": [
+      {
+        "id": "frame-main",
+        "layers": [
+          "data:image/png;base64,...",
+          null,
+          null
+        ],
+        "objects": []
+      }
+    ],
+    "backgroundClips": [
+      {
+        "id": "bg-main",
+        "layers": [
+          null,
+          null,
+          null
+        ],
+        "objects": []
+      }
+    ],
+    "backgroundAssignments": [
+      "bg-main"
+    ]
+  },
+  "treefortRoom": {
+    "schema": "treefort-room-hidden-meta",
+    "schemaVersion": 1,
+    "roomMode": {
+      "active": true,
+      "singleFrameLocked": true,
+      "timelineEditable": false,
+      "gifToolsEnabled": false,
+      "showBackgroundNotice": true,
+      "backgroundNotice": "ROOM COLORS ARE NOT EDITABLE"
+    },
+    "reference": {
+      "fillUnderlayImage": {
+        "mimeType": "image/svg+xml",
+        "src": "data:image/svg+xml;utf8,...",
+        "targetTrack": "background",
+        "editable": false,
+        "authoritative": false
+      },
+      "warning": "Your tags will be saved, and your colors will be placed on the Background side in IcyAnimation for reference. Changes to that reference do not carry back into the bedroom."
+    },
+    "preserve": {
+      "fillGrid": true,
+      "labelGrid": true,
+      "interactions": true,
+      "unlockState": true
+    }
+  },
+  "reimport": {
+    "replaceSceneOnly": true,
+    "preserveFillGrid": true,
+    "preserveLabelGrid": true,
+    "preserveInteractions": true,
+    "preserveTreefortRoomBlock": true,
+    "ignoreEditedBackgroundReference": true,
+    "allowResetSemanticData": true
+  }
+}

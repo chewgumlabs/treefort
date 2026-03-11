@@ -1,0 +1,17 @@
+{
+  "schema": "treefort-icy-import-plan",
+  "schemaVersion": 2,
+  "roomId": "my-room",
+  "sourceRoot": "../..",
+  "imports": [
+    {
+      "input": "testroom.icy",
+      "assetId": "main-room-lineart",
+      "kind": "scene-lineart",
+      "assignScene": {
+        "spaceId": "main",
+        "resetSemanticData": true
+      }
+    }
+  ]
+}

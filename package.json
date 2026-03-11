@@ -1,0 +1,19 @@
+{
+  "name": "treefort",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "access:gate": "node server/access-gate.example.mjs",
+    "approve:submission": "node scripts/approve-submission.mjs",
+    "build:treefort": "node scripts/build-treefort.mjs",
+    "bridge:icy": "node scripts/import-icy-assets.mjs",
+    "compile:room": "node scripts/compile-room.mjs",
+    "capture:snapshot": "node scripts/capture-room-snapshot.mjs",
+    "discord:gate": "node server/discord-gate.example.mjs",
+    "export:room": "node scripts/export-room-package.mjs",
+    "plan:publish": "node scripts/plan-publish.mjs",
+    "report:submissions": "node scripts/report-submissions.mjs",
+    "validate": "node scripts/validate-treefort.mjs",
+    "check:syntax": "node --check app.js && node --check room/app.js && node --check scripts/approve-submission.mjs && node --check scripts/build-treefort.mjs && node --check scripts/capture-room-snapshot.mjs && node --check scripts/compile-room.mjs && node --check scripts/export-room-package.mjs && node --check scripts/import-icy-assets.mjs && node --check scripts/plan-publish.mjs && node --check scripts/report-submissions.mjs && node --check scripts/validate-treefort.mjs && node --check scripts/lib/manifests.mjs && node --check scripts/lib/room-compiler.mjs && node --check server/access-gate.example.mjs && node --check server/discord-gate.example.mjs && node --check server/lib/http.mjs && node --check server/lib/state.mjs && node --check server/lib/treefort-doors.mjs && node --check server/lib/discord-provider.mjs && node --check shared/room-compiler-core.mjs"
+  }
+}

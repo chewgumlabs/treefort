@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "knock-bungalow",
+  "submittedAt": "2026-03-09",
+  "owner": {
+    "githubLogin": "knock-bungalow",
+    "repo": "knock-bungalow/knock-bungalow.github.io",
+    "siteUrl": "./room/",
+    "roomManifestUrl": "./content/verified-room-manifests/knock-bungalow.json"
+  },
+  "room": {
+    "roomId": "knock-bungalow",
+    "schemaVersion": 1
+  },
+  "acknowledgements": {
+    "age13Plus": true,
+    "publicSite": true,
+    "noPrivateInfo": true
+  },
+  "door": {
+    "name": "Knock Bungalow",
+    "caption": "A playful password gate before the page opens.",
+    "destinationLabel": "./room/",
+    "neighborhood": "starter-canopy",
+    "access": {
+      "mode": "knock",
+      "passphrase": "acorn",
+      "hint": "Demo passphrase: acorn"
+    }
+  }
+}

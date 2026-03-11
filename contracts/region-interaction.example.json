@@ -1,0 +1,24 @@
+{
+  "schema": "treefort-region-interaction",
+  "schemaVersion": 1,
+  "roomId": "my-room",
+  "spaceId": "main",
+  "blobId": "bed-blob-1",
+  "label": "bed",
+  "cells": [
+    "20,30",
+    "21,30",
+    "22,30",
+    "20,31",
+    "21,31",
+    "22,31"
+  ],
+  "interaction": {
+    "type": "words",
+    "title": "Under Blanket Note",
+    "body": "Don't forget the flashlight.",
+    "unlock": {
+      "state": "available"
+    }
+  }
+}

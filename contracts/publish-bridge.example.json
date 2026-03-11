@@ -1,0 +1,57 @@
+{
+  "contractVersion": 1,
+  "requestType": "publish-room",
+  "requestId": "publish-my-room-2026-03-09T15-45-00Z",
+  "roomId": "my-room",
+  "expectedRoomSchemaVersion": 1,
+  "target": {
+    "githubOwner": "demo-owner",
+    "repoName": "demo-owner.github.io",
+    "branch": "main",
+    "siteType": "user",
+    "baseUrl": "https://demo-owner.github.io/"
+  },
+  "writes": [
+    {
+      "path": "data/room.json",
+      "kind": "json",
+      "source": "room-manifest"
+    },
+    {
+      "path": "data/assets.json",
+      "kind": "json",
+      "source": "asset-manifest"
+    },
+    {
+      "path": "assets/imports/icy/main-room-lineart.json",
+      "kind": "asset",
+      "assetId": "main-room-lineart",
+      "mimeType": "application/json",
+      "bytes": 12481,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "deletes": [
+    "assets/imports/icy/old-room-scene.png"
+  ],
+  "constraints": {
+    "allowedWritePrefixes": [
+      "data/",
+      "assets/"
+    ],
+    "forbiddenPaths": [
+      "index.html",
+      "app.js",
+      "styles.css",
+      "package.json",
+      "CNAME",
+      "sw.js"
+    ],
+    "maxDeleteCount": 20,
+    "requirePullRequest": false
+  },
+  "commit": {
+    "message": "Update room manifest and safe assets for my-room",
+    "authorLabel": "Treefort Bridge"
+  }
+}

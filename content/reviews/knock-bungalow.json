@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "knock-bungalow",
+  "status": "approved",
+  "reviewedAt": "2026-03-09",
+  "reviewedBy": "chewgum",
+  "notes": "Approved as the playful knock/password example.",
+  "listing": {
+    "sortOrder": 30,
+    "position": {
+      "x": 76,
+      "y": 52
+    }
+  },
+  "verification": {
+    "verifiedAt": "2026-03-09",
+    "verifiedRoomManifestPath": "content/verified-room-manifests/knock-bungalow.json",
+    "roomSchemaVersion": 1,
+    "snapshotSha256": "c39706085cc5ada3a2b6821391ce296fcfea851149d2971aeebcaa1cc5a098d8",
+    "sourceRoomManifestUrl": "./content/verified-room-manifests/knock-bungalow.json"
+  }
+}
