@@ -180,7 +180,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
 
   // Provision the room
   const today = new Date().toISOString().split("T")[0];
-  const roomHref = `./rooms/${slot.id}/`;
+  const roomHref = `./room/?guest=${slot.id}`;
   const hash = await sha256Hex(normalized);
   const encrypted = await encryptString(roomHref, normalized);
 
@@ -209,12 +209,8 @@ async function handleClaimRoom(env, interaction, userId, username) {
     return discordReply("Something went wrong provisioning your room. Try again in a minute.");
   }
 
-  // Create empty room data file
-  const roomData = JSON.stringify(
-    { version: 1, createdAt: today, guestName: username, guestId: slot.id, frames: [], interactions: [] },
-    null,
-    2,
-  );
+  // Create room data matching the editor's semantic-room schema
+  const roomData = JSON.stringify(guestRoomTemplate(slot.id, username, today), null, 2);
   await commitGitHubFile(env, `rooms/${slot.id}/data.json`, roomData, null, `Create ${slot.id} room data`);
 
   return discordReply(
@@ -392,4 +388,46 @@ function corsResponse(response) {
 
 function discordReply(content) {
   return jsonResponse(200, { type: 4, data: { content, flags: 64 } });
+}
+
+function guestRoomTemplate(guestId, guestName, today) {
+  return {
+    schema: "treefort-semantic-room",
+    schemaVersion: 1,
+    roomId: guestId,
+    roomEngine: "semantic-scene-v2",
+    owner: { displayName: guestName, siteUrl: "./" },
+    presentation: { eyebrow: "Guest room", title: `${guestName}'s Room`, description: "A guest room in the Treefort." },
+    updatedAt: today,
+    links: [{ label: "Treefort", href: "../../index.html" }],
+    stage: { width: 256, height: 192, tileWidth: 4, tileHeight: 4, gridWidth: 64, gridHeight: 48, gutterLeft: 0, gutterRight: 0 },
+    limits: {
+      maxSpaces: 12, maxLinks: 6, maxPaletteColors: 16, maxAssetCount: 64,
+      maxAssetBytesPerFile: 4194304, maxAssetBytesTotal: 33554432,
+      maxFillPatchesPerSpace: 64, maxSurfacePatchesPerSpace: 64, maxRegionsPerSpace: 32,
+      maxPortalBindingsPerSpace: 24, maxRectsPerPatch: 24, maxRectsPerRegion: 24,
+      maxTagsPerEntry: 12, maxLabelLength: 48, maxTitleLength: 64, maxBodyLength: 280,
+      maxCaptionLength: 160, maxClickHintLength: 96,
+      allowedAssetMimeTypes: ["image/png", "image/gif", "image/webp", "image/svg+xml", "application/json"],
+      allowedAssetExtensions: [".png", ".gif", ".webp", ".svg", ".json"],
+    },
+    palette: [
+      { id: "soot", hex: "#17191d" }, { id: "pearl", hex: "#f4f1e8" },
+      { id: "fog", hex: "#b9b2a8" }, { id: "bark", hex: "#6a4e40" },
+      { id: "ember", hex: "#b44034" }, { id: "tangerine", hex: "#ef8f50" },
+      { id: "sun", hex: "#f5c74e" }, { id: "lemon", hex: "#f2df73" },
+      { id: "moss", hex: "#6f9440" }, { id: "sky", hex: "#4d9fe7" },
+      { id: "mint", hex: "#2db8a1" }, { id: "teal", hex: "#2b7f8c" },
+      { id: "cobalt", hex: "#3d57bb" }, { id: "grape", hex: "#7a4db0" },
+      { id: "rose", hex: "#de6a8b" }, { id: "peach", hex: "#efb7a2" },
+    ],
+    assets: [],
+    entrySpaceId: "main",
+    spaces: [{
+      id: "main", navigationKind: "room", title: `${guestName}'s Room`,
+      description: "A blank room ready to be decorated.", revealState: "undrawn",
+      sceneArtAssetId: null, placeholderPrompt: "Draw your room to reveal it.",
+      fillPatches: [], surfacePatches: [], scoreGoals: [], regions: [], portalBindings: [],
+    }],
+  };
 }

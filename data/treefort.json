@@ -16,29 +16,14 @@
     {
       "id": "guest-001",
       "type": "guest",
-      "status": "occupied",
-      "name": "Mia's Room",
-      "floor": 0,
-      "moveInDate": "2026-03-07",
-      "access": {
-        "mode": "knock",
-        "hint": "Ask Mia!",
-        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
-      }
+      "status": "vacant",
+      "floor": 0
     },
     {
       "id": "guest-002",
       "type": "guest",
-      "status": "occupied",
-      "floor": 0,
-      "name": "TestKid's Room",
-      "moveInDate": "2026-03-11",
-      "access": {
-        "mode": "knock",
-        "hint": "Ask TestKid!",
-        "passphraseHash": "fcfd075cbe367c158d5cfaa31fa06656a3e68f626388d96ee81b35dda4310b58",
-        "encryptedHref": "ZJx91karfASWW6YuRuLDUWMKj/VcFHqlMw6gMv5vWHlBgUZiGr2JdNIg1afQaxD2XdAEvtonbXmF9jasxL4="
-      }
+      "status": "vacant",
+      "floor": 0
     },
     {
       "id": "guest-003",
@@ -52,21 +37,14 @@
         "mode": "knock",
         "hint": "Ask shanecurry!",
         "passphraseHash": "d8a243c28b2a58b280bb8604e1ac93185b2e373db03d4ceaf739059f67a2382a",
-        "encryptedHref": "V53QL3t4rnHhUaXUZOve7tGHAzcRJ54SgSNGlKW+3ooYZsx6PpDQhXXJKDNtIDbyXZFs4oncCLzecWJRH4Q="
+        "encryptedHref": "oc2DXejm8o+b+F0Js7YUvRULg3zbkt60ArJ8kVv7bH4pn1ML7VKuvHcGD++XNknpK3Dez3K2NWDnTN9eCvv/BkU4zQ=="
       }
     },
     {
       "id": "guest-004",
       "type": "guest",
-      "status": "occupied",
-      "name": "Jake's Hideout",
-      "floor": 1,
-      "moveInDate": "2026-03-05",
-      "access": {
-        "mode": "knock",
-        "hint": "Ask Jake!",
-        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
-      }
+      "status": "vacant",
+      "floor": 1
     },
     {
       "id": "guest-005",
@@ -95,15 +73,8 @@
     {
       "id": "guest-009",
       "type": "guest",
-      "status": "occupied",
-      "name": "Lily's Corner",
-      "floor": 2,
-      "moveInDate": "2026-03-04",
-      "access": {
-        "mode": "knock",
-        "hint": "Ask Lily!",
-        "encryptedHref": "ZFeIGxqx7ctUOi1Rh4TcF3YhQGTiOn33SE3lWfqxQ77oGGH/y2kW3fFESqEayZwfFTlh"
-      }
+      "status": "vacant",
+      "floor": 2
     },
     {
       "id": "my-room",

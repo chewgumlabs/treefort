@@ -278,7 +278,7 @@ function renderDoors(rooms, rules) {
   });
 
   for (let i = 0; i < floorCount; i++) {
-    const platformY = (i + 1) * floorH;
+    const platformY = (floorCount - i) * floorH;
     const platform = document.createElement("div");
     platform.className = "floor-platform";
     platform.style.top = `${platformY}%`;

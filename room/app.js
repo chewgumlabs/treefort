@@ -2718,7 +2718,9 @@ window.addEventListener("popstate", () => {
 });
 
 async function main() {
-  const response = await fetch("./data/room.json", { cache: "no-store" });
+  const guestParam = new URLSearchParams(window.location.search).get("guest");
+  const dataUrl = guestParam ? `../rooms/${guestParam}/data.json` : "./data/room.json";
+  const response = await fetch(dataUrl, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Unable to load room manifest: ${response.status}`);
   }
