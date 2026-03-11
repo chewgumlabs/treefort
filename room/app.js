@@ -39,6 +39,9 @@ const interactionActionWindow = document.getElementById("interaction-action-wind
 const interactionSaveWindow = document.getElementById("interaction-save-window");
 const interactionTitleInput = document.getElementById("interaction-title");
 const interactionDescriptionInput = document.getElementById("interaction-description");
+const interactionNoteWindow = document.getElementById("interaction-note-window");
+const interactionNoteInput = document.getElementById("interaction-note");
+const noteGlitchOverlay = document.getElementById("note-glitch-overlay");
 const interactionTargetField = document.getElementById("interaction-target-field");
 const interactionSecretTarget = document.getElementById("interaction-secret-target");
 const saveInteractionButton = document.getElementById("save-interaction-button");
@@ -61,7 +64,9 @@ const importRoomInput = document.getElementById("import-room-input");
 const exportRoomButton = document.getElementById("export-room-button");
 const toolButtons = [...document.querySelectorAll(".author-tool[data-tool]")];
 
-const debugRegions = new URLSearchParams(window.location.search).get("debug") === "1";
+const _searchParams = new URLSearchParams(window.location.search);
+const debugRegions = _searchParams.get("debug") === "1";
+const debugMode = _searchParams.has("debug");
 const ERASE_ID = "__erase__";
 const LOCAL_DRAFT_PREFIX = "treefort-room-draft-v4:";
 const ICY_LAYER_COLORS = ["#17191d", "#ef8f50", "#4d9fe7", "#2db8a1", "#de6a8b", "#f5c74e"];
@@ -221,7 +226,7 @@ let selectedColorId = ERASE_ID;
 let selectedObjectLabelId = ERASE_ID;
 let selectedSupportLabelId = ERASE_ID;
 let activeLabelLayer = "objects";
-let selectedInteractionType = "words";
+let selectedInteractionType = "art";
 let selectedInteractiveRegionId = null;
 let pendingArtSrc = null;
 let pointerStroke = null;
@@ -277,6 +282,11 @@ function jumpToSpace(spaceId) {
     return;
   }
 
+  // Bonus and secret rooms auto-reveal on first visit — no Icy drawing needed
+  if (targetSpace.revealState === "undrawn" && (targetSpace.id === "bonus" || targetSpace.id === "secret")) {
+    targetSpace.revealState = "drawn";
+  }
+
   if (activeSpaceId && activeSpaceId !== targetSpace.id) {
     spaceTrail.push(activeSpaceId);
   }
@@ -294,7 +304,7 @@ function isBonusComplete() {
 }
 
 function renderNavigation(space) {
-  navBackwardButton.disabled = spaceTrail.length === 0;
+  navBackwardButton.disabled = false;
   navForwardButton.disabled = forwardTrail.length === 0;
   navTreefortButton.disabled = !manifest.links.some((item) => item.href);
   const secretSpace = manifest.spaces.find((s) => s.id === "secret");
@@ -635,16 +645,10 @@ function buildFillGrid(space) {
 }
 
 function inferLabelIdFromPatch(patch) {
-  if (patch.surface === "floor") {
-    return "floor";
-  }
-  if (patch.surface === "poster") {
-    return "poster-secret";
-  }
-  if (patch.surface === "solid") {
-    return "solid";
-  }
-  return null;
+  // Map special cases; everything else is its own labelId
+  const surfaceToLabel = { poster: "poster-secret" };
+  if (!patch.surface) return null;
+  return surfaceToLabel[patch.surface] || patch.surface;
 }
 
 function inferLabelIdFromRegion(region) {
@@ -1491,6 +1495,17 @@ function getScoreGoals(space) {
   return Array.isArray(space.scoreGoals) ? space.scoreGoals : [];
 }
 
+function getActiveWaveForSpace(space) {
+  const completed = manifest.completedWaves || [];
+  const goals = getScoreGoals(space);
+  if (!goals.length) return 1;
+  const maxWave = Math.max(...goals.map((g) => g.wave || 1));
+  for (let w = 1; w <= maxWave; w++) {
+    if (!completed.includes(`${space.id}-${w}`)) return w;
+  }
+  return maxWave;
+}
+
 function evaluateSpace(space, draft) {
   if (space.revealState !== "drawn") {
     return {
@@ -1498,47 +1513,59 @@ function evaluateSpace(space, draft) {
       total: 0,
       critic: space.placeholderPrompt,
       secretRoomUnlocked: false,
+      waveComplete: false,
+      allComplete: false,
     };
   }
 
-  const criteria = getScoreGoals(space);
-  let earned = 0;
-  let total = 0;
-  let missingHint = null;
+  const allGoals = getScoreGoals(space);
+  const wave = getActiveWaveForSpace(space);
 
-  for (const criterion of criteria) {
-    total += 1;
-    const count = countCellsForLabel(draft.labelGrid, criterion.labelId);
-    if (count >= criterion.minCells) {
+  // Only count goals up to and including the current wave
+  const activeGoals = allGoals.filter((g) => (g.wave || 1) <= wave);
+  const currentWaveGoals = allGoals.filter((g) => (g.wave || 1) === wave);
+
+  let earned = 0;
+  let total = activeGoals.length;
+  let missingHint = null;
+  let currentWaveEarned = 0;
+
+  for (const goal of activeGoals) {
+    const count = countCellsForLabel(draft.labelGrid, goal.labelId);
+    if (count >= goal.minCells) {
       earned += 1;
-    } else if (!missingHint) {
-      missingHint = criterion.hint || `...this room still needs ${criterion.label.toLowerCase()}.`;
+      if ((goal.wave || 1) === wave) currentWaveEarned += 1;
+    } else if (!missingHint && (goal.wave || 1) === wave) {
+      missingHint = `${goal.hint || `...this room still needs ${goal.label.toLowerCase()}.`} (${count}/${goal.minCells})`;
     }
   }
 
+  const waveComplete = currentWaveGoals.length > 0 && currentWaveEarned >= currentWaveGoals.length;
+  const maxWave = allGoals.length ? Math.max(...allGoals.map((g) => g.wave || 1)) : 1;
+  const allComplete = waveComplete && wave >= maxWave;
+
   if (!total) {
     return {
-      earned: 0,
-      total: 0,
+      earned: 0, total: 0,
       critic: "...draw the room, then teach it what everything is.",
-      secretRoomUnlocked: false,
+      secretRoomUnlocked: false, waveComplete: false, allComplete: false,
     };
   }
 
-  if (earned >= total) {
+  if (allComplete) {
     return {
-      earned,
-      total,
+      earned, total: allGoals.length,
       critic: "...the room knows every object now. secret room unlocked.",
-      secretRoomUnlocked: true,
+      secretRoomUnlocked: true, waveComplete: true, allComplete: true,
     };
   }
 
   return {
-    earned,
-    total,
-    critic: missingHint || "...keep teaching the room what things are.",
-    secretRoomUnlocked: false,
+    earned, total,
+    critic: waveComplete
+      ? "...wave complete! something is happening..."
+      : missingHint || "...keep teaching the room what things are.",
+    secretRoomUnlocked: false, waveComplete, allComplete: false,
   };
 }
 
@@ -1574,7 +1601,8 @@ function syncInteractiveForm(space) {
   interactivePanel.classList.toggle("hidden", authorMode !== "interactive");
   interactionTypeButtons.forEach((button) => {
     const type = button.dataset.interactionType;
-    const secretRoomLocked = type === "secret-room" && (!evaluation.secretRoomUnlocked || !secretRoomOptions.length);
+    const selectedLabelId = selectedBlob?.labelId || region?.semanticLabelId || null;
+    const secretRoomLocked = type === "secret-room" && selectedLabelId !== "poster-secret";
     button.disabled = secretRoomLocked;
     button.classList.toggle("is-active", type === selectedInteractionType);
   });
@@ -1582,7 +1610,10 @@ function syncInteractiveForm(space) {
   interactionDescriptionWindow?.classList.toggle("hidden", authorMode !== "interactive");
   interactionActionWindow?.classList.toggle("hidden", authorMode !== "interactive");
   interactionSaveWindow?.classList.toggle("hidden", authorMode !== "interactive");
-  artUploadWindow?.classList.toggle("hidden", authorMode !== "interactive");
+  artUploadWindow?.classList.add("hidden");
+  interactionNoteWindow?.classList.add("hidden");
+  interactionSaveWindow?.classList.toggle("is-sinister", selectedInteractionType === "words");
+  interactionActionWindow?.classList.toggle("is-sinister", selectedInteractionType === "words");
 
   interactionSecretTarget.replaceChildren();
   if (secretRoomOptions.length) {
@@ -1599,20 +1630,26 @@ function syncInteractiveForm(space) {
     interactionSecretTarget.appendChild(option);
   }
 
-  const secretRoomLocked = !evaluation.secretRoomUnlocked;
-  const noTargets = !secretRoomOptions.length;
+  const selectedLabelId = selectedBlob?.labelId || region?.semanticLabelId || null;
+  const secretRoomLocked = selectedLabelId !== "poster-secret";
+  const noTargets = false;
   if (!selectedBlob && !region) {
     syncInteractiveSelectedSwatch(null, "");
     interactionTitleInput.value = "";
     interactionDescriptionInput.value = "";
+    if (interactionNoteInput) interactionNoteInput.value = "";
+    if (noteGlitchOverlay) noteGlitchOverlay.textContent = "";
     interactionSecretTarget.value = secretRoomOptions[0]?.id ?? "";
     interactionTitleInput.disabled = true;
     interactionDescriptionInput.disabled = true;
+    if (interactionNoteInput) interactionNoteInput.disabled = true;
     interactionSecretTarget.disabled = true;
     saveInteractionButton.disabled = true;
     clearInteractionButton.disabled = true;
     interactionTargetField.classList.add("hidden");
     artUploadWindow?.classList.add("hidden");
+    interactionSaveWindow?.classList.remove("is-sinister");
+    interactionActionWindow?.classList.remove("is-sinister");
     return;
   }
 
@@ -1622,15 +1659,17 @@ function syncInteractiveForm(space) {
   };
   syncInteractiveSelectedSwatch(blob.labelId, blob.labelName);
 
-  const effectiveType = region?.interaction?.type ?? selectedInteractionType;
-  selectedInteractionType = effectiveType;
+  const effectiveType = selectedInteractionType;
   interactionTypeButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.interactionType === effectiveType);
   });
 
-  interactionTargetField.classList.toggle("hidden", effectiveType !== "secret-room");
+  interactionTargetField.classList.add("hidden");
   artUploadWindow?.classList.toggle("hidden", effectiveType !== "art");
   interactionDescriptionWindow?.classList.toggle("hidden", effectiveType === "art" || authorMode !== "interactive");
+  interactionNoteWindow?.classList.toggle("hidden", effectiveType !== "words" || authorMode !== "interactive");
+  interactionSaveWindow?.classList.toggle("is-sinister", effectiveType === "words");
+  interactionActionWindow?.classList.toggle("is-sinister", effectiveType === "words");
 
   interactionTitleInput.disabled = false;
   interactionDescriptionInput.disabled = false;
@@ -1640,6 +1679,11 @@ function syncInteractiveForm(space) {
 
   interactionTitleInput.value = savedInteraction?.title || "";
   interactionDescriptionInput.value = region?.description || savedInteraction?.body || "";
+  if (interactionNoteInput) {
+    interactionNoteInput.value = savedInteraction?.noteText || "";
+    interactionNoteInput.disabled = false;
+    syncNoteGlitch();
+  }
 
   const existingArtSrc = savedInteraction?.artSrc || null;
   pendingArtSrc = pendingArtSrc || existingArtSrc;
@@ -1654,6 +1698,8 @@ function syncInteractiveForm(space) {
   } else {
     interactionSecretTarget.value = secretRoomOptions[0]?.id ?? "";
   }
+
+  dismissNoteOverlay();
 }
 
 function upsertInteractiveRegion(space, draft, blob, interaction) {
@@ -1732,11 +1778,11 @@ function playRegionInteraction(space, draft, region) {
   }
 
   if (interaction.type === "words") {
-    showNoteOverlay(
-      interaction.title || region.clickHint || region.label,
-      interaction.body || region.description || "",
-    );
-    setStatus(interaction.title || region.clickHint || region.label);
+    const noteText = interaction.noteText || region.label || "Note";
+    showNoteOverlay(noteText, zalgoify(noteText));
+    if (interaction.body) {
+      setMessage(interaction.body);
+    }
     return;
   }
 
@@ -1819,19 +1865,96 @@ function updateFeedback(space) {
   if (authorMode === "interactive") {
     syncInteractiveForm(space);
   }
+
+  checkWaveAdvancement(space, evaluation);
+}
+
+let _waveAdvancing = false;
+
+function checkWaveAdvancement(space, evaluation) {
+  if (_waveAdvancing) return;
+  if (manifest.questPhase !== "decorating") return;
+  if (!evaluation.waveComplete) return;
+
+  const wave = getActiveWaveForSpace(space);
+  const allGoals = getScoreGoals(space);
+  const maxWave = allGoals.length ? Math.max(...allGoals.map((g) => g.wave || 1)) : 1;
+
+  // Already announced this wave completion — don't repeat
+  if (!manifest.completedWaves) manifest.completedWaves = [];
+  const completedKey = `${space.id}-${wave}`;
+  if (manifest.completedWaves.includes(completedKey)) return;
+
+  if (evaluation.allComplete) {
+    // All waves done for this space
+    _waveAdvancing = true;
+    manifest.completedWaves.push(completedKey);
+
+    if (space.id === "main") {
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: `You did it! Every single thing in this room has a name. You've unlocked... something. Check the ? button.`,
+        actions: [{ label: "!!!", onClick: () => { _waveAdvancing = false; } }],
+      });
+    } else if (space.id === "bonus") {
+      showDialog({
+        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+        text: `${glitchText(99)} ...y̷ou actually d1d it. the room is c̸omplete. ${glitchText(100)} go find your r̵eward. if there 1s one.`,
+        actions: [{ label: "...", onClick: () => { _waveAdvancing = false; } }],
+      });
+    } else {
+      _waveAdvancing = false;
+    }
+    saveGuestRoom();
+    return;
+  }
+
+  // Wave complete but more waves remain — advance
+  _waveAdvancing = true;
+  manifest.completedWaves.push(completedKey);
+
+  const nextWave = wave + 1;
+  if (space.id === "main") {
+    const waveDialogs = {
+      2: `Hey, it's starting to look like a real room! But... a desk would be nice. And maybe a chair? And a lamp so you can read at night.`,
+      3: `Wow, this is cozy. But don't you want a window? And a shelf for your stuff? And a clock so you know when your stay is almost up.`,
+      4: `Hmm, this room is almost perfect. Almost TOO perfect. Maybe you should put up a poster? Just a thought...`,
+    };
+    showDialog({
+      speaker: "Gum", frames: GUM_HAPPY,
+      text: waveDialogs[nextWave] || `Wave ${nextWave} unlocked! Keep going!`,
+      actions: [{ label: "On it!", onClick: () => { _waveAdvancing = false; buildLabelBrushes(); updateFeedback(getCurrentSpace()); } }],
+    });
+  } else if (space.id === "bonus") {
+    const bonusDialogs = {
+      2: `${glitchText(3)} COLD. HOT. ${glitchText(4)}`,
+      3: `${glitchText(5)} LIGHT. DARK. ${glitchText(6)}`,
+      4: `${glitchText(7)} LOST. FOUND. ${glitchText(8)}`,
+    };
+    showDialog({
+      speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+      text: bonusDialogs[nextWave] || `${glitchText(nextWave * 10)} ...n̸ext.`,
+      actions: [{ label: "...okay", onClick: () => { _waveAdvancing = false; buildLabelBrushes(); updateFeedback(getCurrentSpace()); } }],
+    });
+  } else {
+    _waveAdvancing = false;
+  }
+  saveGuestRoom();
 }
 
 function refreshAuthoringUI(space) {
   const canAuthor = space.revealState === "drawn";
   const showFillLayer = space.revealState === "drawn" && (authorMode === "view" || authorMode === "paint");
-  const leftPanelMode = authorMode === "view" ? "" : authorMode;
+  const hasGoals = getScoreGoals(space).length > 0;
+  const showLabelsInView = authorMode === "view" && hasGoals;
+  const leftPanelMode = authorMode === "view" ? (hasGoals ? "labels" : "") : authorMode;
   leftPanelWindow.classList.toggle("is-collapsed", !leftPanelMode);
   leftPanelBody.classList.toggle("hidden", !leftPanelMode);
   leftPanelWindow.classList.remove("is-fill");
   supportWindow?.classList.toggle("hidden", authorMode !== "labels");
-  leftPanelTitle.textContent = "Submenu";
+  leftPanelTitle.textContent = showLabelsInView ? "Objects" : "Submenu";
   paintPanel.classList.toggle("hidden", authorMode !== "paint");
-  labelPanel.classList.toggle("hidden", authorMode !== "labels");
+  labelPanel.classList.toggle("hidden", authorMode !== "labels" && !showLabelsInView);
   interactivePanel.classList.toggle("hidden", authorMode !== "interactive");
   fillLayer.classList.toggle("hidden", !showFillLayer);
   labelLayer.classList.toggle("hidden", !canAuthor || !["labels", "interactive"].includes(authorMode));
@@ -1941,10 +2064,50 @@ function buildPaintSwatches() {
   });
 }
 
+// Bonus room label overlays — Glitchby's weird labels
+const BONUS_LABEL_OVERLAYS = {
+  dry: "rgba(210, 180, 140, 0.62)",
+  wet: "rgba(50, 120, 200, 0.62)",
+  cold: "rgba(140, 200, 255, 0.62)",
+  hot: "rgba(255, 80, 40, 0.62)",
+  light: "rgba(255, 240, 140, 0.66)",
+  dark: "rgba(40, 20, 60, 0.62)",
+  lost: "rgba(160, 80, 200, 0.62)",
+  found: "rgba(80, 200, 120, 0.62)",
+};
+
+function getLabelBrushesForSpace(space) {
+  const wave = getActiveWaveForSpace(space);
+  const goals = getScoreGoals(space);
+  if (!goals.length) return OBJECT_LABEL_BRUSHES;
+
+  const unlocked = goals.filter((g) => (g.wave || 1) <= wave);
+  return unlocked.map((g) => {
+    // Check if it exists in the hardcoded brushes
+    const existing = labelBrushById.get(g.labelId);
+    if (existing) return existing;
+    // Generate from goal (bonus room)
+    return {
+      id: g.labelId,
+      label: g.label,
+      key: g.label,
+      overlay: BONUS_LABEL_OVERLAYS[g.labelId] || "rgba(180, 180, 180, 0.62)",
+    };
+  });
+}
+
 function buildLabelBrushes() {
   labelBrushes.replaceChildren();
 
-  const brushes = [{ id: ERASE_ID, label: "Erase", key: "Erase", overlay: "rgba(255, 255, 255, 0.3)" }, ...OBJECT_LABEL_BRUSHES];
+  const space = getCurrentSpace();
+  const spaceBrushes = getLabelBrushesForSpace(space);
+
+  // Register bonus labels in the lookup so overlays render
+  for (const b of spaceBrushes) {
+    if (!labelBrushById.has(b.id)) labelBrushById.set(b.id, b);
+  }
+
+  const brushes = [{ id: ERASE_ID, label: "Erase", key: "Erase", overlay: "rgba(255, 255, 255, 0.3)" }, ...spaceBrushes];
 
   brushes.forEach((entry) => {
     const button = document.createElement("button");
@@ -2131,9 +2294,7 @@ function renderRegions(space, draft) {
         if (authorMode !== "view") {
           return;
         }
-        setStatus(getRegionHoverTitle(region));
         showHoverTitle(getRegionHoverTitle(region), event);
-        setMessage(getRegionMessage(region));
       });
       hit.addEventListener("mousemove", (event) => {
         if (authorMode !== "view") {
@@ -2173,7 +2334,6 @@ function renderRegions(space, draft) {
           playRegionInteraction(space, draft, region);
         } else {
           setStatus(region.clickHint || `${region.label} does not open anything yet.`);
-          setMessage(getRegionMessage(region));
         }
       });
       regionLayer.appendChild(hit);
@@ -2224,7 +2384,30 @@ async function handleImportedRoomFile(file) {
   }
 
   if (spaceDraftMeta?.spaceId && spaceDraftMeta.spaceId !== space.id) {
-    throw new Error(`Open ${spaceDraftMeta.spaceId} first, then import this file there.`);
+    const isGlitchbyRoom = space.id === "bonus" || space.id === "secret";
+    const targetIsGlitchby = spaceDraftMeta.spaceId === "bonus" || spaceDraftMeta.spaceId === "secret";
+    if (isGlitchbyRoom) {
+      // Importing Gum's stuff into Glitchby's space
+      showDialog({
+        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+        text: `${glitchText(20)} N̷O N̸O N̶O. ${glitchText(21)}`,
+        actions: [{ label: zalgoify("......"), onClick: () => {} }],
+      });
+    } else if (targetIsGlitchby) {
+      // Importing Glitchby's stuff into Gum's space
+      showDialog({
+        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+        text: `${glitchText(15)} m̷ine m̸ine m̶ine.`,
+        actions: [{ label: zalgoify("......"), onClick: () => {} }],
+      });
+    } else {
+      showDialog({
+        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+        text: `${glitchText(22)} m̷ine m̸ine m̶ine.`,
+        actions: [{ label: zalgoify("......"), onClick: () => {} }],
+      });
+    }
+    return;
   }
 
   const draft = getDraft(space);
@@ -2467,17 +2650,25 @@ toolButtons.forEach((button) => {
   });
 });
 
+const SPACE_PARENT = { bonus: "main", secret: "bonus" };
+
 navBackwardButton?.addEventListener("click", () => {
-  const previousSpaceId = spaceTrail.pop();
-  if (!previousSpaceId) {
+  const parentId = SPACE_PARENT[activeSpaceId];
+  if (parentId) {
+    // Go to parent room
+    if (activeSpaceId) forwardTrail.push(activeSpaceId);
+    activeSpaceId = parentId;
+    writeLocationSpaceId(activeSpaceId);
+    renderActiveSpace();
     return;
   }
-  if (activeSpaceId) {
-    forwardTrail.push(activeSpaceId);
+  // Main room → go to treefort hub
+  if (activeSpaceId === "main" || !SPACE_PARENT[activeSpaceId]) {
+    const treefortLink = manifest?.links?.find((item) => item.href);
+    if (treefortLink?.href) {
+      window.location.assign(treefortLink.href);
+    }
   }
-  activeSpaceId = previousSpaceId;
-  writeLocationSpaceId(activeSpaceId);
-  renderActiveSpace();
 });
 
 navForwardButton?.addEventListener("click", () => {
@@ -2548,16 +2739,30 @@ importRoomInput?.addEventListener("change", async (event) => {
   try {
     await handleImportedRoomFile(file);
 
+    const space = getCurrentSpace();
+
     // If we were in awaiting-room, advance to decorating
     if (manifest.questPhase === "awaiting-room") {
       manifest.questPhase = "decorating";
       manifest.activeWave = 1;
+      space.revealState = "drawn";
       await saveGuestRoom();
       const name = manifest.owner?.displayName || "friend";
       showDialog({
         speaker: "Gum", frames: GUM_HAPPY,
         text: `${name}!! You drew a whole room! Look at it! Okay okay okay — now you can paint it. Color everything in, and I'll tell you what the room still needs!`,
         actions: [{ label: "Let's go!", onClick: () => {} }],
+      });
+    }
+
+    // Bonus/secret room drawing imported — mark drawn and confirm
+    if (space.id === "bonus" && space.revealState !== "drawn") {
+      space.revealState = "drawn";
+      await saveGuestRoom();
+      showDialog({
+        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+        text: `${glitchText(13)} ...you actually d̷rew it. ${glitchText(14)} now color it in. teach the r̷oom what's dry and what's w̸et.`,
+        actions: [{ label: "...okay", onClick: () => {} }],
       });
     }
   } catch (error) {
@@ -2573,7 +2778,49 @@ interactionTypeButtons.forEach((button) => {
     selectedInteractionType = button.dataset.interactionType;
     pendingArtSrc = null;
     syncInteractiveForm(getCurrentSpace());
+    // Live preview for words
+    if (selectedInteractionType === "words") {
+      updateNotePreview();
+    } else {
+      dismissNoteOverlay();
+    }
   });
+});
+
+function updateNotePreview() {
+  const note = interactionNoteInput?.value.trim() || "";
+  showNoteOverlay(note || "Note", note ? zalgoify(note) : "");
+}
+
+function zalgoify(text) {
+  const above = ['\u0300','\u0301','\u0302','\u0303','\u0304','\u0305','\u0306','\u0307','\u0308','\u030a','\u030b','\u030c','\u030d','\u030e','\u030f','\u0310','\u0311','\u0312','\u0313','\u0314','\u0315','\u031a'];
+  const below = ['\u0316','\u0317','\u0318','\u0319','\u031c','\u031d','\u031e','\u031f','\u0320','\u0323','\u0324','\u0325','\u0326','\u0329','\u032a','\u032b','\u032c','\u032d','\u032e','\u032f','\u0330','\u0331','\u0332','\u0333'];
+  const mid = ['\u0334','\u0335','\u0336','\u0337','\u0338'];
+  const swap = '\u2591\u2592\u2593\u2588\u25a0\u25b2\u25bc\u2666\u00ab\u00bb\u2020\u2021\u00a4\u00a7\u00b6\u2310\u2261\u2248\u221a\u221e';
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === " " || ch === "\n") { out += ch; continue; }
+    const h = (i * 9301 + text.charCodeAt(i) * 49297) % 233280;
+    out += h % 7 === 0 ? swap[h % swap.length] : ch;
+    const na = 2 + (h % 4);
+    for (let j = 0; j < na; j++) out += above[(h + j * 37) % above.length];
+    const nb = 1 + (h % 3);
+    for (let j = 0; j < nb; j++) out += below[(h + j * 23) % below.length];
+    if (h % 3 === 0) out += mid[h % mid.length];
+  }
+  return out;
+}
+
+function syncNoteGlitch() {
+  if (!noteGlitchOverlay) return;
+  const raw = interactionNoteInput?.value || "";
+  noteGlitchOverlay.textContent = raw ? zalgoify(raw) : "";
+}
+
+interactionNoteInput?.addEventListener("input", () => {
+  syncNoteGlitch();
+  if (selectedInteractionType === "words") updateNotePreview();
 });
 
 gifOverlay?.addEventListener("click", dismissGifOverlay);
@@ -2623,8 +2870,8 @@ saveInteractionButton?.addEventListener("click", () => {
     return;
   }
 
-  if (selectedInteractionType === "secret-room" && !evaluation.secretRoomUnlocked) {
-    setStatus("Secret Room unlocks after the room is fully taught.");
+  if (selectedInteractionType === "secret-room" && selectedBlob?.labelId !== "poster-secret") {
+    setStatus("Only the poster can hide a secret passage.");
     return;
   }
 
@@ -2636,7 +2883,7 @@ saveInteractionButton?.addEventListener("click", () => {
   };
 
   if (selectedInteractionType === "secret-room") {
-    interaction.targetSpaceId = interactionSecretTarget.value;
+    interaction.targetSpaceId = "bonus";
   } else if (selectedInteractionType === "art") {
     const artSrc = pendingArtSrc || getInteractiveSelection(space, draft).region?.interaction?.artSrc;
     if (!artSrc) {
@@ -2647,6 +2894,10 @@ saveInteractionButton?.addEventListener("click", () => {
     interaction.body = "";
   } else {
     interaction.body = interactionDescriptionInput.value.trim();
+  }
+
+  if (selectedInteractionType === "words") {
+    interaction.noteText = interactionNoteInput?.value.trim() || "";
   }
 
   upsertInteractiveRegion(space, draft, selectedBlob, interaction);
@@ -2678,6 +2929,8 @@ function renderActiveSpace() {
   if (previousSpaceId !== null && previousSpaceId !== space.id) {
     selectedInteractiveRegionId = null;
   }
+  buildLabelBrushes();
+  buildSupportBrushes();
 
   if (roomEyebrow) {
     roomEyebrow.textContent = manifest.presentation.eyebrow;
@@ -2704,7 +2957,10 @@ function renderActiveSpace() {
   drawFillGrid(draft.fillGrid);
   const asset = assetById.get(space.sceneArtAssetId);
   if (!sceneOverride && !asset) {
-    setStatus("This room is marked as drawn, but its scene art is missing.");
+    if (!debugMode) {
+      setStatus("This room is marked as drawn, but its scene art is missing.");
+    }
+    renderRegions(space, draft);
     refreshAuthoringUI(space);
     return;
   }
@@ -2779,6 +3035,14 @@ function showDialog({ speaker, frames, text, actions }) {
   if (!questDialogEl) return;
   if (_talkInterval) { clearInterval(_talkInterval); _talkInterval = null; }
 
+  // Size portrait to integer pixel scale — min 2x, max 3x
+  const sizePortrait = (img) => {
+    const nat = img.naturalHeight || 36;
+    const scale = Math.max(2, Math.min(3, Math.floor(120 / nat)));
+    img.style.width = `${img.naturalWidth * scale}px`;
+    img.style.height = `${nat * scale}px`;
+  };
+  questDialogPortrait.onload = () => sizePortrait(questDialogPortrait);
   questDialogPortrait.src = frames[0];
   questDialogPortrait.alt = speaker;
   questDialogSpeaker.textContent = speaker;
@@ -2814,16 +3078,10 @@ const GLITCHBY  = ["./assets/characters/glitchby1.png", "./assets/characters/gli
 
 function glitchText(seed) {
   const chunks = [
-    "d̷̢͓̈́r", "̸̱̌y̶͎̑", "w̷͚̄ë̵̝t", "c̸̰̊o̵̟͑l̴̰̈́d", "h̶̰̀o̵̜͝t",
-    "0x4C", "0xFF", "NaN", "null", "ERR",
     "▓▒░", "█▄▀", "◄►▼", "╬═╗", "┼┤╣",
-    "seg̴̛fault", "buf̷fer", "ov̵̈́erflow", "cor̷rupt", "mal̶loc",
-    "̷̧̛̱̣̦̈́̊̃̚ẅ̴̡̲̫̞́̅̄̍h̸̲̞̮̄̓a̶̡̛̲̎̈́t̵̨̟̝̆", "̸̡̱̌ì̷̠̫̊s̵̰̆̕",
-    "th̸̰̀is̵̜", "p̴̰̈́lace", "r̶̰̊o̵̟͑om", "w̷̄alls",
-    "&&", "||", "!=", ">>", "<<", "^=",
-    "f0und", "l0st", "br1ght", "d4rk",
-    "☐☐☐", "???", "!!!", "...", "___",
-    "HELP", "FINE", "OKAY", "WAIT", "HERE",
+    "☐☐☐", "???", "___", "...", "───",
+    "▓▓▓", "░░░", "┼┼┼", "═══", "╔╗╚",
+    "▒▒▒", "▀▄▀", "╝╚╗", "┤├┬", "▄█▄",
   ];
   // Deterministic-ish shuffle from seed
   let h = seed;
@@ -2901,12 +3159,11 @@ function runQuestPhase() {
   }
 
   if (manifest.questPhase === "decorating") {
-    const wave = manifest.activeWave || 1;
     const space = getCurrentSpace();
+    const wave = space ? getActiveWaveForSpace(space) : 1;
 
     // Secret room — graduation + sticker book
     if (space && space.id === "secret") {
-      // Show the sticker book button
       if (stickerBookButton) stickerBookButton.classList.remove("hidden");
       showDialog({
         speaker: "Gum", frames: GUM_HAPPY,
@@ -2916,55 +3173,25 @@ function runQuestPhase() {
       return;
     }
 
-    // Bonus room — Glitchby's domain
-    if (space && space.id === "bonus") {
-      const w = manifest.activeWave || 1;
-      if (w === 1) {
-        showDialog({
-          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-          text: `${glitchText(1)} ...y̷ou're here. f1nally. the room n̶eeds DRY and WET before ̸̱anything el̵se. ${glitchText(2)} don't ask why.`,
-          actions: [{ label: "...okay?", onClick: () => {} }],
-        });
-      } else if (w === 2) {
-        showDialog({
-          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-          text: `${glitchText(3)} g̵ood. now COLD and HOT. the room needs t̶emperature. ${glitchText(4)} trust the proc̸ess.`,
-          actions: [{ label: "Sure", onClick: () => {} }],
-        });
-      } else if (w === 3) {
-        showDialog({
-          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-          text: `${glitchText(5)} LIGHT and DARK now. ̸̡̱every room has b̵oth. ${glitchText(6)} you're d̶oing something. I th̷ink.`,
-          actions: [{ label: "Thanks?", onClick: () => {} }],
-        });
-      } else if (w === 4) {
-        showDialog({
-          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-          text: `${glitchText(7)} ...last one. LOST and FOUND. ${glitchText(8)} when you f1nd what's l0st the wa̸ll opens. or maybe it d̷oesn't. ${glitchText(9)}`,
-          actions: [{ label: "Uh huh", onClick: () => {} }],
-        });
-      }
+    // Bonus room — Glitchby intro (wave 1 only, advancement handles the rest)
+    if (space && space.id === "bonus" && wave === 1) {
+      showDialog({
+        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+        text: `${glitchText(1)} ...y̷ou're here. f1nally. ${glitchText(2)} my room n̶eeds DRY and WET ̸̱anything el̵se. tell Icy dry and wet r̷oom.`,
+        actions: [
+          { label: "How do I draw Dry and Wet?", onClick: () => { downloadBonusRoomFile(); } },
+          { label: "Leave", onClick: () => { jumpToSpace("main"); } },
+        ],
+      });
       return;
     }
 
-    // Main room wave dialogs
-    if (wave === 2) {
+    // Main room — wave 1 intro (advancement handles 2+)
+    if (space && space.id === "main" && wave === 1) {
       showDialog({
         speaker: "Gum", frames: GUM_HAPPY,
-        text: `Hey, it's starting to look like a real room! But... a desk would be nice. And maybe a chair? And a lamp so you can read at night.`,
-        actions: [{ label: "On it!", onClick: () => {} }],
-      });
-    } else if (wave === 3) {
-      showDialog({
-        speaker: "Gum", frames: GUM_HAPPY,
-        text: `Wow, this is cozy. But don't you want a window? And a shelf for your stuff? And a clock so you know when your stay is almost up.`,
-        actions: [{ label: "On it!", onClick: () => {} }],
-      });
-    } else if (wave === 4) {
-      showDialog({
-        speaker: "Gum", frames: GUM_HAPPY,
-        text: `Hmm, this room is perfect. Almost TOO perfect. Maybe you should put up a poster? Just a thought...`,
-        actions: [{ label: "Interesting...", onClick: () => {} }],
+        text: `Welcome back, ${manifest.owner?.displayName || "friend"}! Your room looks great! Now I need you to teach the room what everything is. Color in the floor, the rug, and the bed so the room knows what's what.`,
+        actions: [{ label: "Let's go!", onClick: () => {} }],
       });
     }
     return;
@@ -2988,6 +3215,30 @@ function downloadRoomFile() {
   const a = document.createElement("a");
   a.href = url;
   a.download = `${guestName}.Room`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function downloadBonusRoomFile() {
+  const guestName = manifest.owner.displayName;
+  const roomFile = {
+    version: 1,
+    app: "TreeFort",
+    questPhase: "bonus-room",
+    guestId: manifest.roomId,
+    spaceId: "bonus",
+    guestName,
+    createdAt: new Date().toISOString(),
+    canvas: { width: 256, height: 192 },
+    instructions: "Draw Glitchby's room. Dry things and wet things. Don't ask why.",
+  };
+  const blob = new Blob([JSON.stringify(roomFile, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${guestName}_bonus.Room`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -3165,7 +3416,8 @@ function gridToFillPatches(grid) {
 }
 
 function gridToSurfacePatches(labelGrid, supportGrid) {
-  const labelMap = { floor: "floor", "poster-secret": "poster" };
+  // Map special cases; everything else stored as-is
+  const labelToSurface = { "poster-secret": "poster" };
   const byKey = new Map();
   function addRect(surface, x, y, w) {
     if (!byKey.has(surface)) byKey.set(surface, []);
@@ -3175,8 +3427,8 @@ function gridToSurfacePatches(labelGrid, supportGrid) {
     let x = 0;
     while (x < manifest.stage.gridWidth) {
       const labelId = labelGrid[y][x];
-      const surface = labelMap[labelId];
-      if (!surface) { x++; continue; }
+      if (!labelId) { x++; continue; }
+      const surface = labelToSurface[labelId] || labelId;
       let w = 1;
       while (x + w < manifest.stage.gridWidth && labelGrid[y][x + w] === labelId) w++;
       addRect(surface, x, y, w);

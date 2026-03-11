@@ -8,6 +8,16 @@
     local("Dogica");
 }
 
+@font-face {
+  font-family: "OrangeKid";
+  src:
+    url("./assets/fonts/orange-kid/OrangeKid.woff2") format("woff2"),
+    url("./assets/fonts/orange-kid/OrangeKid.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --workspace-gap: 6px;
   --sidebar-width: 228px;
@@ -266,7 +276,8 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--workspace-gap);
-  align-self: start;
+  align-self: stretch;
+  justify-content: space-between;
 }
 
 .room-sidebar--left > .window {
@@ -898,8 +909,71 @@ body.debug-regions .region-hit {
   width: 100%;
 }
 
+#interaction-action-window.is-sinister > .window-bar,
+#interaction-save-window.is-sinister > .window-bar {
+  background: #2e2e2e !important;
+  color: #8c2b3a !important;
+}
+
+#interaction-action-window.is-sinister .window-body {
+  background: #383838 !important;
+}
+
+#interaction-save-window.is-sinister .window-body {
+  background: #383838 !important;
+}
+
+#interaction-save-window.is-sinister #save-interaction-button {
+  background: #8c2b3a !important;
+  color: #f4f1e8 !important;
+  border-color: #5c1d28 !important;
+}
+
+#interaction-save-window.is-sinister #clear-interaction-button {
+  background: #5c1d28 !important;
+  color: #f4f1e8 !important;
+  border-color: #3d1219 !important;
+}
+
 .interactive-field-window .window-bar {
   justify-content: flex-start;
+}
+
+#interaction-note-window > .window-bar {
+  background: #2e2e2e;
+  color: #8c2b3a;
+}
+
+#interaction-note-window .interactive-field-window__body {
+  background: #383838;
+}
+
+.note-input-wrap {
+  position: relative;
+}
+
+.note-glitch-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 28px;
+  color: #8c2b3a;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  z-index: 1;
+}
+
+#interaction-note-window input {
+  position: relative;
+  background: transparent;
+  color: transparent;
+  caret-color: #8c2b3a;
+  border-color: #2e2e2e;
+  z-index: 2;
+  min-height: 28px;
 }
 
 .interactive-field-window__body {
@@ -1105,7 +1179,7 @@ body.debug-regions .region-hit {
 }
 
 .gif-overlay {
-  background: var(--screen, #2a2a2a);
+  background: transparent;
 }
 
 .gif-overlay img {
@@ -1118,35 +1192,45 @@ body.debug-regions .region-hit {
 
 .note-overlay {
   background: rgba(9, 17, 11, 0.72);
-  padding: 12px;
+  padding: 18px;
+  z-index: 9;
 }
 
 .note-card {
-  width: 86%;
-  max-height: 88%;
-  padding: 14px 16px;
-  border: 4px solid var(--ink);
-  border-radius: 4px;
-  background: var(--paper);
+  width: 90%;
+  max-height: 90%;
+  padding: 16px 20px;
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  background: #2e2e2e;
   box-shadow: 4px 4px 0 var(--ink);
   overflow-y: auto;
   pointer-events: none;
 }
 
 .note-card__title {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 700;
+  margin: 0 0 10px;
+  font-family: "OrangeKid", "RetroPixel", monospace;
+  font-size: 22px;
+  font-weight: normal;
   line-height: 1.2;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8c2b3a;
+  border-bottom: 3px solid #8c2b3a;
+  padding-bottom: 6px;
 }
 
 .note-card__body {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
+  font-family: "OrangeKid", "RetroPixel", monospace;
+  font-size: 16px;
+  font-weight: normal;
+  line-height: 1.3;
+  color: #8c2b3a;
   white-space: pre-wrap;
-  word-break: break-word;
+  word-break: break-all;
+  opacity: 0.7;
 }
 
 /* ═══════════════════════════════════════
@@ -1179,11 +1263,12 @@ body.debug-regions .region-hit {
 }
 
 .quest-dialog__portrait {
-  width: 81px;
-  height: 108px;
-  object-fit: contain;
   image-rendering: pixelated;
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: -10px;
+  margin-left: -4px;
+  z-index: 1;
 }
 
 .quest-dialog__content {
@@ -1200,18 +1285,19 @@ body.debug-regions .region-hit {
 
 .quest-dialog__speaker {
   margin: 0 0 6px;
-  font-family: "RetroPixel", monospace;
-  font-size: 14px;
-  font-weight: bold;
+  font-family: "OrangeKid", "RetroPixel", monospace;
+  font-size: 20px;
+  font-weight: normal;
   color: var(--bar-dark);
   text-transform: uppercase;
 }
 
 .quest-dialog__text {
   margin: 0 0 14px;
-  font-family: "RetroPixel", monospace;
-  font-size: 13px;
-  line-height: 1.5;
+  font-family: "OrangeKid", "RetroPixel", monospace;
+  font-size: 18px;
+  font-weight: normal;
+  line-height: 1.4;
   color: var(--ink);
 }
 

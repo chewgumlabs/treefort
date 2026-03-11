@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Treefort Room</title>
-    <link rel="stylesheet" href="./styles.css?v=20260310j" />
+    <link rel="stylesheet" href="./styles.css?v=20260312u" />
   </head>
   <body>
     <main class="room-page">
@@ -60,6 +60,19 @@
             </div>
           </section>
 
+          <section class="window interactive-field-window hidden" id="interaction-note-window">
+            <div class="window-bar">Note</div>
+            <div class="window-body interactive-field-window__body note-input-wrap">
+              <div class="note-glitch-overlay" id="note-glitch-overlay" aria-hidden="true"></div>
+              <input
+                id="interaction-note"
+                type="text"
+                maxlength="64"
+                placeholder=""
+              />
+            </div>
+          </section>
+
           <section class="window art-upload-window interactive-field-window hidden" id="art-upload-window">
             <div class="window-bar">GIF File</div>
             <div class="window-body art-upload-body">
@@ -69,10 +82,7 @@
           </section>
 
           <section class="window interactive-field-window hidden" id="interaction-target-field">
-            <div class="window-bar">Target Room</div>
-            <div class="window-body interactive-field-window__body">
-              <select id="interaction-secret-target"></select>
-            </div>
+            <select id="interaction-secret-target" hidden></select>
           </section>
 
           <section class="window interactive-action-window hidden" id="interaction-action-window">
@@ -81,7 +91,7 @@
               <div class="interaction-type-strip" id="interaction-type-strip">
                 <button class="interaction-type interaction-type--sprite interaction-type--art" type="button" data-interaction-type="art" aria-label="Art" title="Art"></button>
                 <button class="interaction-type interaction-type--sprite interaction-type--words" type="button" data-interaction-type="words" aria-label="Words" title="Words"></button>
-                <button class="interaction-type interaction-type--sprite interaction-type--secret-room" type="button" data-interaction-type="secret-room" aria-label="Secret Room" title="Secret Room"></button>
+                <button class="interaction-type interaction-type--sprite interaction-type--secret-room" type="button" data-interaction-type="secret-room" aria-label="what?" title="what?"></button>
               </div>
             </div>
           </section>
@@ -301,6 +311,6 @@
     <p class="room-status hidden" id="stage-status">Import a room drawing from IcyAnimation.</p>
     <input id="import-room-input" type="file" accept=".room,.icy,.specialkey" hidden />
     <input id="art-gif-input" type="file" accept="image/gif" hidden />
-    <script src="./app.js?v=20260310j"></script>
+    <script src="./app.js?v=20260312u"></script>
   </body>
 </html>
