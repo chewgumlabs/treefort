@@ -1225,3 +1225,87 @@ body.debug-regions .region-hit {
   font-family: "RetroPixel", monospace;
   font-size: 11px;
 }
+
+/* ═══════════════════════════════════════
+   Sticker Book
+   ═══════════════════════════════════════ */
+
+.sticker-book-button {
+  position: absolute;
+  right: 100px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.sticker-book-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+}
+
+.sticker-book__page {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  image-rendering: pixelated;
+}
+
+.sticker-book__page img {
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.sticker-book__page--empty {
+  color: var(--bar);
+  font-family: "RetroPixel", monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.sticker-book__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 12px;
+}
+
+.sticker-book__arrow {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  background: var(--paper-dark);
+  box-shadow: 1px 1px 0 var(--ink);
+  font-family: "RetroPixel", monospace;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sticker-book__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sticker-book__page-num {
+  margin: 0;
+  font-family: "RetroPixel", monospace;
+  font-size: 11px;
+  color: var(--ink);
+  text-transform: uppercase;
+  min-width: 50px;
+  text-align: center;
+}

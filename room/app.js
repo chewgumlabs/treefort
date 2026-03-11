@@ -286,12 +286,25 @@ function jumpToSpace(spaceId) {
   renderActiveSpace();
 }
 
+function isBonusComplete() {
+  const bonus = manifest.spaces.find((s) => s.id === "bonus");
+  if (!bonus || !bonus.scoreGoals || bonus.scoreGoals.length === 0) return false;
+  const maxWave = Math.max(...bonus.scoreGoals.map((g) => g.wave || 1));
+  return (manifest.completedWaves || []).includes(`bonus-${maxWave}`);
+}
+
 function renderNavigation(space) {
   navBackwardButton.disabled = spaceTrail.length === 0;
   navForwardButton.disabled = forwardTrail.length === 0;
   navTreefortButton.disabled = !manifest.links.some((item) => item.href);
-  const bonusSpace = manifest.spaces.find((candidate) => candidate.navigationKind === "bonus");
-  navBonusButton.disabled = !bonusSpace || space.id === bonusSpace.id;
+  const secretSpace = manifest.spaces.find((s) => s.id === "secret");
+  const bonusSpace = manifest.spaces.find((s) => s.navigationKind === "bonus");
+  // ? button: enabled only after bonus is complete, goes to secret room
+  if (secretSpace && isBonusComplete()) {
+    navBonusButton.disabled = space.id === "secret";
+  } else {
+    navBonusButton.disabled = !bonusSpace || space.id === bonusSpace?.id;
+  }
 }
 
 function setStatus(text) {
@@ -2481,14 +2494,16 @@ navForwardButton?.addEventListener("click", () => {
 });
 
 navBonusButton?.addEventListener("click", () => {
-  if (!manifest) {
+  if (!manifest) return;
+  // After bonus completion, ? jumps to secret room
+  const secretSpace = manifest.spaces.find((s) => s.id === "secret");
+  if (secretSpace) {
+    jumpToSpace(secretSpace.id);
     return;
   }
-  const bonusSpace = manifest.spaces.find((candidate) => candidate.navigationKind === "bonus");
-  if (!bonusSpace) {
-    return;
-  }
-  jumpToSpace(bonusSpace.id);
+  // Fallback: old behavior
+  const bonusSpace = manifest.spaces.find((s) => s.navigationKind === "bonus");
+  if (bonusSpace) jumpToSpace(bonusSpace.id);
 });
 
 navTreefortButton?.addEventListener("click", () => {
@@ -2515,12 +2530,36 @@ importRoomButton?.addEventListener("click", () => {
 importRoomInput?.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   event.target.value = "";
-  if (!file) {
+  if (!file) return;
+
+  const lowerName = file.name.toLowerCase();
+
+  // .SpecialKey import — Phase 3: return the key
+  if (lowerName.endsWith(".specialkey")) {
+    try {
+      await handleSpecialKeyImport(file);
+    } catch (error) {
+      setStatus(error.message);
+    }
     return;
   }
 
+  // Standard .room/.icy import
   try {
     await handleImportedRoomFile(file);
+
+    // If we were in awaiting-room, advance to decorating
+    if (manifest.questPhase === "awaiting-room") {
+      manifest.questPhase = "decorating";
+      manifest.activeWave = 1;
+      await saveGuestRoom();
+      const name = manifest.owner?.displayName || "friend";
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: `${name}!! You drew a whole room! Look at it! Okay okay okay — now you can paint it. Color everything in, and I'll tell you what the room still needs!`,
+        actions: [{ label: "Let's go!", onClick: () => {} }],
+      });
+    }
   } catch (error) {
     setStatus(error.message);
   }
@@ -2771,6 +2810,27 @@ function showDialog({ speaker, frames, text, actions }) {
 
 const GUM_HAPPY = ["./assets/characters/gumDialA01.png", "./assets/characters/gumDialA02.png"];
 const GUM_SAD   = ["./assets/characters/gumDialB01.png", "./assets/characters/gumDialB02.png"];
+const GLITCHBY  = ["./assets/characters/glitchby1.png", "./assets/characters/glitchby2.png"];
+
+function glitchText(seed) {
+  const chunks = [
+    "d̷̢͓̈́r", "̸̱̌y̶͎̑", "w̷͚̄ë̵̝t", "c̸̰̊o̵̟͑l̴̰̈́d", "h̶̰̀o̵̜͝t",
+    "0x4C", "0xFF", "NaN", "null", "ERR",
+    "▓▒░", "█▄▀", "◄►▼", "╬═╗", "┼┤╣",
+    "seg̴̛fault", "buf̷fer", "ov̵̈́erflow", "cor̷rupt", "mal̶loc",
+    "̷̧̛̱̣̦̈́̊̃̚ẅ̴̡̲̫̞́̅̄̍h̸̲̞̮̄̓a̶̡̛̲̎̈́t̵̨̟̝̆", "̸̡̱̌ì̷̠̫̊s̵̰̆̕",
+    "th̸̰̀is̵̜", "p̴̰̈́lace", "r̶̰̊o̵̟͑om", "w̷̄alls",
+    "&&", "||", "!=", ">>", "<<", "^=",
+    "f0und", "l0st", "br1ght", "d4rk",
+    "☐☐☐", "???", "!!!", "...", "___",
+    "HELP", "FINE", "OKAY", "WAIT", "HERE",
+  ];
+  // Deterministic-ish shuffle from seed
+  let h = seed;
+  const pick = () => { h = (h * 9301 + 49297) % 233280; return chunks[h % chunks.length]; };
+  const len = 6 + (seed % 5);
+  return Array.from({ length: len }, pick).join(" ");
+}
 
 function buildParchment(guestId, guestName) {
   return {
@@ -2811,6 +2871,7 @@ function runQuestPhase() {
       text: `Oh! It's you, ${name}! Your room's not quite ready yet! I need you to bring me a drawing of a key, so I can unlock your Sticker Book! It must be drawn on special paper. Here, take this Parchment to Icy, she'll know what to do.`,
       actions: [
         { label: "Take the Parchment", onClick: downloadParchment },
+        { label: "I have a Key!", onClick: () => importRoomInput?.click() },
         { label: "Icy?", onClick: () => {
           showDialog({
             speaker: "Gum", frames: GUM_HAPPY,
@@ -2832,9 +2893,80 @@ function runQuestPhase() {
       text: `I'm afraid I have some bad news... Your room is totally empty. No bed, no rug, not even a floor. If you could take this .Room file to Icy and draw your own floor, rug, and your own bed, then you can come back and you can color it all in here!`,
       actions: [
         { label: "Take the Room file", onClick: () => downloadRoomFile() },
+        { label: "I drew my Room!", onClick: () => importRoomInput?.click() },
         { label: "Not yet", onClick: () => {} },
       ],
     });
+    return;
+  }
+
+  if (manifest.questPhase === "decorating") {
+    const wave = manifest.activeWave || 1;
+    const space = getCurrentSpace();
+
+    // Secret room — graduation + sticker book
+    if (space && space.id === "secret") {
+      // Show the sticker book button
+      if (stickerBookButton) stickerBookButton.classList.remove("hidden");
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: `You found it! You've done everything a guest can do. If you want to take up permanent residency with us, you can host your own room — your OWN Treefort. Ask the person who invited you how to get started. We'd love to have you as a neighbor.`,
+        actions: [{ label: "Wow", onClick: () => {} }],
+      });
+      return;
+    }
+
+    // Bonus room — Glitchby's domain
+    if (space && space.id === "bonus") {
+      const w = manifest.activeWave || 1;
+      if (w === 1) {
+        showDialog({
+          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+          text: `${glitchText(1)} ...y̷ou're here. f1nally. the room n̶eeds DRY and WET before ̸̱anything el̵se. ${glitchText(2)} don't ask why.`,
+          actions: [{ label: "...okay?", onClick: () => {} }],
+        });
+      } else if (w === 2) {
+        showDialog({
+          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+          text: `${glitchText(3)} g̵ood. now COLD and HOT. the room needs t̶emperature. ${glitchText(4)} trust the proc̸ess.`,
+          actions: [{ label: "Sure", onClick: () => {} }],
+        });
+      } else if (w === 3) {
+        showDialog({
+          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+          text: `${glitchText(5)} LIGHT and DARK now. ̸̡̱every room has b̵oth. ${glitchText(6)} you're d̶oing something. I th̷ink.`,
+          actions: [{ label: "Thanks?", onClick: () => {} }],
+        });
+      } else if (w === 4) {
+        showDialog({
+          speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+          text: `${glitchText(7)} ...last one. LOST and FOUND. ${glitchText(8)} when you f1nd what's l0st the wa̸ll opens. or maybe it d̷oesn't. ${glitchText(9)}`,
+          actions: [{ label: "Uh huh", onClick: () => {} }],
+        });
+      }
+      return;
+    }
+
+    // Main room wave dialogs
+    if (wave === 2) {
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: `Hey, it's starting to look like a real room! But... a desk would be nice. And maybe a chair? And a lamp so you can read at night.`,
+        actions: [{ label: "On it!", onClick: () => {} }],
+      });
+    } else if (wave === 3) {
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: `Wow, this is cozy. But don't you want a window? And a shelf for your stuff? And a clock so you know when your stay is almost up.`,
+        actions: [{ label: "On it!", onClick: () => {} }],
+      });
+    } else if (wave === 4) {
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: `Hmm, this room is perfect. Almost TOO perfect. Maybe you should put up a poster? Just a thought...`,
+        actions: [{ label: "Interesting...", onClick: () => {} }],
+      });
+    }
     return;
   }
 }
@@ -2863,6 +2995,152 @@ function downloadRoomFile() {
 }
 
 // ════════════════════════════════════════
+//  SpecialKey Import (Phase 3)
+// ════════════════════════════════════════
+
+async function handleSpecialKeyImport(file) {
+  if (manifest.questPhase !== "awaiting-key") {
+    throw new Error("You've already turned in your key!");
+  }
+
+  let keyData;
+  try {
+    keyData = JSON.parse(await file.text());
+  } catch {
+    throw new Error("That file isn't a valid SpecialKey.");
+  }
+
+  if (keyData?.app !== "IcyAnimation" || keyData?.questPhase !== "awaiting-key") {
+    throw new Error("That doesn't look like a SpecialKey from Icy.");
+  }
+
+  // Store the key art if present (IcyAnimation embeds it as a data URL)
+  if (keyData.keyArt) {
+    manifest.keyArt = keyData.keyArt;
+  }
+
+  // Advance quest
+  manifest.questPhase = "awaiting-room";
+  manifest.activeWave = 0;
+  await saveGuestRoom();
+
+  const name = manifest.owner?.displayName || "friend";
+  showDialog({
+    speaker: "Gum", frames: GUM_HAPPY,
+    text: `Oh how pretty! I'll hold onto your key for now, because I'm afraid I have some bad news...`,
+    actions: [{ label: "What?", onClick: () => {
+      showDialog({
+        speaker: "Gum", frames: GUM_SAD,
+        text: `Your room is totally empty. No bed, no rug, not even a floor. If you could take this .Room file to Icy and draw your own floor, rug, and your own bed, then you can come back and color it all in here!`,
+        actions: [
+          { label: "Take the Room file", onClick: () => downloadRoomFile() },
+          { label: "Not yet", onClick: () => {} },
+        ],
+      });
+    }}],
+  });
+}
+
+// ════════════════════════════════════════
+//  Sticker Book
+// ════════════════════════════════════════
+
+const stickerBookButton = document.getElementById("sticker-book-button");
+const stickerBookOverlay = document.getElementById("sticker-book-overlay");
+const stickerBookPage = document.getElementById("sticker-book-page");
+const stickerBookPageNum = document.getElementById("sticker-book-page-num");
+const stickerBookLeft = document.getElementById("sticker-book-left");
+const stickerBookRight = document.getElementById("sticker-book-right");
+
+let stickerBookOpen = false;
+let stickerBookIndex = 0;
+let stickerBookFirstOpen = true;
+
+function getStickerPages() {
+  // Page 1 is always the key (if they have one)
+  // Future: additional sticker pages from book.json
+  const pages = [];
+  if (manifest.keyArt) {
+    pages.push({ type: "key", label: "Your Key", dataUrl: manifest.keyArt });
+  }
+  if (pages.length === 0) {
+    pages.push({ type: "empty", label: "Empty" });
+  }
+  return pages;
+}
+
+function renderStickerPage() {
+  const pages = getStickerPages();
+  if (stickerBookIndex < 0) stickerBookIndex = 0;
+  if (stickerBookIndex >= pages.length) stickerBookIndex = pages.length - 1;
+  const page = pages[stickerBookIndex];
+
+  stickerBookPage.replaceChildren();
+
+  if (page.type === "empty") {
+    const p = document.createElement("p");
+    p.className = "sticker-book__page--empty";
+    p.textContent = "No stickers yet";
+    stickerBookPage.appendChild(p);
+  } else {
+    const img = document.createElement("img");
+    img.src = page.dataUrl;
+    img.alt = page.label;
+    stickerBookPage.appendChild(img);
+  }
+
+  stickerBookPageNum.textContent = `${stickerBookIndex + 1} / ${pages.length}`;
+  stickerBookLeft.disabled = stickerBookIndex === 0;
+  stickerBookRight.disabled = stickerBookIndex >= pages.length - 1;
+}
+
+function toggleStickerBook() {
+  stickerBookOpen = !stickerBookOpen;
+  if (stickerBookOpen) {
+    if (stickerBookFirstOpen) {
+      stickerBookFirstOpen = false;
+      // Glitchby gibberish → "What?" → Gum explains
+      showDialog({
+        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
+        text: `${glitchText(42)} ̸̱̌s̵t̸̰̊i̷ck̶er̵ b̸00k ${glitchText(43)} ini̷tial̶ized ${glitchText(44)} y̷our k̶ey is ins̵ide ${glitchText(45)}`,
+        actions: [{ label: "What?", onClick: () => {
+          showDialog({
+            speaker: "Gum", frames: GUM_HAPPY,
+            text: `...I said this is your Sticker Book. There's nothing left for you to draw, but you're welcome to stay until your time is up! Go visit a neighbor, maybe you'll be inspired. Real people are always so inspiring.`,
+            actions: [{ label: "Okay!", onClick: () => {
+              stickerBookOverlay.classList.remove("hidden");
+              stickerBookIndex = 0;
+              renderStickerPage();
+            }}],
+          });
+        }}],
+      });
+      return;
+    }
+    stickerBookOverlay.classList.remove("hidden");
+    stickerBookIndex = 0;
+    renderStickerPage();
+  } else {
+    stickerBookOverlay.classList.add("hidden");
+  }
+}
+
+if (stickerBookButton) {
+  stickerBookButton.addEventListener("click", toggleStickerBook);
+}
+if (stickerBookLeft) {
+  stickerBookLeft.addEventListener("click", () => {
+    stickerBookIndex--;
+    renderStickerPage();
+  });
+}
+if (stickerBookRight) {
+  stickerBookRight.addEventListener("click", () => {
+    stickerBookIndex++;
+    renderStickerPage();
+  });
+}
+
 //  Guest Room Save
 // ════════════════════════════════════════
 

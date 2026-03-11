@@ -4,13 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Treefort Room</title>
-    <link rel="stylesheet" href="./styles.css?v=20260310g" />
+    <link rel="stylesheet" href="./styles.css?v=20260310j" />
   </head>
   <body>
     <main class="room-page">
       <header class="room-bar">
         <p class="author-score author-score--header" id="author-score">0 / 0 pts</p>
         <h1 class="room-title" id="room-title">TREEFORT</h1>
+        <button class="room-link room-link--button room-link--muted sticker-book-button hidden" id="sticker-book-button" type="button">
+          Sticker Book
+        </button>
         <button class="room-link room-link--button guest-save-button hidden" id="guest-save-button" type="button">
           Save Room
         </button>
@@ -136,6 +139,14 @@
                       <p class="quest-dialog__text" id="quest-dialog-text"></p>
                       <div class="quest-dialog__actions" id="quest-dialog-actions"></div>
                     </div>
+                  </div>
+                </div>
+                <div class="sticker-book-overlay hidden" id="sticker-book-overlay" role="dialog" aria-label="Sticker book">
+                  <div class="sticker-book__page" id="sticker-book-page"></div>
+                  <div class="sticker-book__nav">
+                    <button class="sticker-book__arrow" id="sticker-book-left" type="button" aria-label="Previous page">&lt;</button>
+                    <p class="sticker-book__page-num" id="sticker-book-page-num">1 / 1</p>
+                    <button class="sticker-book__arrow" id="sticker-book-right" type="button" aria-label="Next page">&gt;</button>
                   </div>
                 </div>
               </div>
@@ -288,8 +299,8 @@
     </main>
 
     <p class="room-status hidden" id="stage-status">Import a room drawing from IcyAnimation.</p>
-    <input id="import-room-input" type="file" accept=".room,.icy" hidden />
+    <input id="import-room-input" type="file" accept=".room,.icy,.specialkey" hidden />
     <input id="art-gif-input" type="file" accept="image/gif" hidden />
-    <script src="./app.js?v=20260310g"></script>
+    <script src="./app.js?v=20260310j"></script>
   </body>
 </html>
