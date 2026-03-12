@@ -172,7 +172,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
     const elapsed = daysSince(existing.moveInDate);
     const daysLeft = rules.stayDays - elapsed;
     return discordReply(
-      `You already have a room! **${existing.name}** (${daysLeft} day${daysLeft === 1 ? "" : "s"} left).`,
+      `You already have a room! **${existing.name}** — ${doorLabel(existing.id)} (${daysLeft} day${daysLeft === 1 ? "" : "s"} left).`,
     );
   }
 
@@ -220,7 +220,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
   return discordReply(
     `**Your room is ready!** 🏠\n\n` +
       `**Room:** ${slot.name}\n` +
-      `**Door:** ${slot.id}\n` +
+      `**Location:** ${doorLabel(slot.id)}\n` +
       `**Passphrase:** ||${passphrase}|| (only you can see this)\n` +
       `**Stay:** ${rules.stayDays} days (expires ${expiryDate(today, rules.stayDays)})\n\n` +
       `Go to the tree and find your door!`,
@@ -248,7 +248,7 @@ async function handleMyRoom(env, userId) {
   const daysLeft = rules.stayDays - elapsed;
   const expires = expiryDate(room.moveInDate, rules.stayDays);
 
-  let status = `**${room.name}** — ${room.id}\n`;
+  let status = `**${room.name}** — ${doorLabel(room.id)}\n`;
   status += `Moved in: ${room.moveInDate}\n`;
   status += `Expires: ${expires}\n`;
 
@@ -425,6 +425,12 @@ async function commitGitHubFile(env, path, content, existingSha, message) {
 // ════════════════════════════════════════
 //  Utility
 // ════════════════════════════════════════
+
+function doorLabel(doorId) {
+  const num = parseInt(doorId.replace("guest-", ""), 10);
+  const floor = Math.ceil(num / 2);
+  return `Door ${num}, Floor ${floor}`;
+}
 
 function daysSince(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr + "T00:00:00Z").getTime()) / 86400000);
