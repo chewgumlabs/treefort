@@ -14,25 +14,115 @@
     }
   },
   "stickerBooks": [
-    { "name": "Gum", "guestId": "gum", "slot": 4 }
+    {
+      "name": "Gum",
+      "guestId": "gum",
+      "slot": 4
+    }
   ],
   "doors": [
-    { "id": "guest-001", "type": "guest", "status": "vacant", "segment": 0, "slot": "a" },
-    { "id": "guest-002", "type": "guest", "status": "vacant", "segment": 0, "slot": "b" },
-    { "id": "guest-003", "type": "guest", "status": "vacant", "segment": 0, "slot": "c" },
-    { "id": "guest-004", "type": "guest", "status": "vacant", "segment": 0, "slot": "d" },
-    { "id": "guest-005", "type": "guest", "status": "vacant", "segment": 1, "slot": "a" },
-    { "id": "guest-006", "type": "guest", "status": "vacant", "segment": 1, "slot": "b" },
-    { "id": "guest-007", "type": "guest", "status": "vacant", "segment": 1, "slot": "c" },
-    { "id": "guest-008", "type": "guest", "status": "vacant", "segment": 1, "slot": "d" },
-    { "id": "guest-009", "type": "guest", "status": "vacant", "segment": 2, "slot": "a" },
-    { "id": "guest-010", "type": "guest", "status": "vacant", "segment": 2, "slot": "b" },
-    { "id": "guest-011", "type": "guest", "status": "vacant", "segment": 2, "slot": "c" },
-    { "id": "guest-012", "type": "guest", "status": "vacant", "segment": 2, "slot": "d" },
     {
-      "id": "my-room", "type": "permanent", "name": "My Room",
-      "segment": 3, "slot": "a",
-      "access": { "mode": "lock" }
+      "id": "guest-001",
+      "type": "guest",
+      "status": "occupied",
+      "segment": 0,
+      "slot": "a",
+      "name": "icys_utopia's Room",
+      "moveInDate": "2026-03-12",
+      "discordUserId": "690020142045724691",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask icys_utopia!",
+        "passphraseHash": "5bb65bb2635517bf0382d1baa5d32a898159938418b9c07ab40929c9e417c342",
+        "encryptedHref": "l26qqnTuGpUuYT7x4HceV3BEv8TC36p0OprXV7udxp03LsAilNLaMts7DvqT6l0Bz8AF5tflMQZ0H7IAs2jO/wp/og=="
+      }
+    },
+    {
+      "id": "guest-002",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 0,
+      "slot": "b"
+    },
+    {
+      "id": "guest-003",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 0,
+      "slot": "c"
+    },
+    {
+      "id": "guest-004",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 0,
+      "slot": "d"
+    },
+    {
+      "id": "guest-005",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 1,
+      "slot": "a"
+    },
+    {
+      "id": "guest-006",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 1,
+      "slot": "b"
+    },
+    {
+      "id": "guest-007",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 1,
+      "slot": "c"
+    },
+    {
+      "id": "guest-008",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 1,
+      "slot": "d"
+    },
+    {
+      "id": "guest-009",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 2,
+      "slot": "a"
+    },
+    {
+      "id": "guest-010",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 2,
+      "slot": "b"
+    },
+    {
+      "id": "guest-011",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 2,
+      "slot": "c"
+    },
+    {
+      "id": "guest-012",
+      "type": "guest",
+      "status": "vacant",
+      "segment": 2,
+      "slot": "d"
+    },
+    {
+      "id": "my-room",
+      "type": "permanent",
+      "name": "My Room",
+      "segment": 3,
+      "slot": "a",
+      "access": {
+        "mode": "lock"
+      }
     }
   ]
 }
