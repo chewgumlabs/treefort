@@ -172,7 +172,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
     const elapsed = daysSince(existing.moveInDate);
     const daysLeft = rules.stayDays - elapsed;
     return discordReply(
-      `You already have a room! **${existing.name}** on floor ${existing.floor} (${daysLeft} day${daysLeft === 1 ? "" : "s"} left).`,
+      `You already have a room! **${existing.name}** (${daysLeft} day${daysLeft === 1 ? "" : "s"} left).`,
     );
   }
 
@@ -220,7 +220,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
   return discordReply(
     `**Your room is ready!** 🏠\n\n` +
       `**Room:** ${slot.name}\n` +
-      `**Floor:** ${slot.floor}\n` +
+      `**Door:** ${slot.id}\n` +
       `**Passphrase:** ||${passphrase}|| (only you can see this)\n` +
       `**Stay:** ${rules.stayDays} days (expires ${expiryDate(today, rules.stayDays)})\n\n` +
       `Go to the tree and find your door!`,
@@ -248,7 +248,7 @@ async function handleMyRoom(env, userId) {
   const daysLeft = rules.stayDays - elapsed;
   const expires = expiryDate(room.moveInDate, rules.stayDays);
 
-  let status = `**${room.name}** — Floor ${room.floor}\n`;
+  let status = `**${room.name}** — ${room.id}\n`;
   status += `Moved in: ${room.moveInDate}\n`;
   status += `Expires: ${expires}\n`;
 
