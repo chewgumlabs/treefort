@@ -4179,6 +4179,14 @@ async function main() {
   isResident = !guestParam && manifest.instance === "resident";
   isSolo = !guestParam && manifest.instance === "solo";
 
+  // Visitors without valid auth are read-only
+  if (guestParam) {
+    const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
+    if (!auth || auth.guestId !== guestParam) {
+      isGuestReadonly = true;
+    }
+  }
+
   // Solo + Resident: restore persisted progress from localStorage
   if (isSolo || isResident) {
     loadSoloManifest();
@@ -4218,12 +4226,12 @@ async function main() {
   renderShell();
 
   // Show save button for guest rooms, publish button for solo/resident
-  if (guestParam && guestSaveButton) {
+  if (guestParam && !isGuestReadonly && guestSaveButton) {
     guestSaveButton.classList.remove("hidden");
   }
 
   // Show door lock toggle for guests
-  if (guestParam && doorLockToggle) {
+  if (guestParam && !isGuestReadonly && doorLockToggle) {
     try {
       const tfRes = await fetch("../data/treefort.json", { cache: "no-store" });
       if (tfRes.ok) {
