@@ -275,7 +275,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
       `**Location:** ${doorLabel(slot.id)}\n` +
       `**Passphrase:** ||${passphrase}|| (only you can see this)\n` +
       `**Stay:** ${rules.stayDays} days (expires ${expiryDate(today, rules.stayDays)})\n\n` +
-      `Go to the tree and find your door!`,
+      `Go to the tree and find your door!\nhttps://chewgumlabs.github.io/treefort/`,
   );
 }
 
