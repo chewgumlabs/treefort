@@ -130,6 +130,32 @@ a {
   text-align: center;
 }
 
+.door-lock-toggle {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.door-lock-toggle__icon {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}
+
+.door-lock-toggle:hover {
+  filter: brightness(1.3);
+}
+
 .author-score--header {
   position: absolute;
   top: 50%;

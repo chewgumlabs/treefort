@@ -29,6 +29,10 @@ export default {
       return corsResponse(await handleSave(request, env));
     }
 
+    if (url.pathname === "/door-mode" && request.method === "POST") {
+      return corsResponse(await handleDoorMode(request, env));
+    }
+
     if (url.pathname === "/discord" && request.method === "POST") {
       return handleDiscord(request, env);
     }
@@ -94,6 +98,54 @@ async function handleSave(request, env) {
     }
 
     return jsonResponse(200, { ok: true });
+  } catch (err) {
+    return jsonResponse(500, { error: err.message });
+  }
+}
+
+// ════════════════════════════════════════
+//  Door Mode Toggle
+// ════════════════════════════════════════
+
+async function handleDoorMode(request, env) {
+  try {
+    const { guestId, passphraseHash, mode } = await request.json();
+
+    if (!guestId || !passphraseHash || !mode) {
+      return jsonResponse(400, { error: "Missing guestId, passphraseHash, or mode" });
+    }
+
+    if (mode !== "knock" && mode !== "stalk" && mode !== "lock") {
+      return jsonResponse(400, { error: "Mode must be knock, stalk, or lock" });
+    }
+
+    const manifestFile = await fetchGitHubFile(env, "data/treefort.json");
+    if (!manifestFile) {
+      return jsonResponse(500, { error: "Could not read manifest" });
+    }
+
+    const manifest = JSON.parse(manifestFile.content);
+    const door = manifest.doors.find((d) => d.id === guestId);
+
+    if (!door || door.type !== "guest" || door.status !== "occupied") {
+      return jsonResponse(403, { error: "Guest room not found or not occupied" });
+    }
+
+    if (door.access.passphraseHash !== passphraseHash) {
+      return jsonResponse(401, { error: "Passphrase does not match" });
+    }
+
+    // Update the mode, preserve everything else
+    door.access.mode = mode;
+
+    const newManifest = JSON.stringify(manifest, null, 2) + "\n";
+    const result = await commitGitHubFile(env, "data/treefort.json", newManifest, manifestFile.sha, `${guestId} door → ${mode}`);
+
+    if (!result.ok) {
+      return jsonResponse(502, { error: "GitHub commit failed" });
+    }
+
+    return jsonResponse(200, { ok: true, mode });
   } catch (err) {
     return jsonResponse(500, { error: err.message });
   }

@@ -3851,6 +3851,89 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ════════════════════════════════════════
+//  Door Lock Toggle
+// ════════════════════════════════════════
+
+const WORKER_DOOR_MODE_URL = "https://treefort-save.chewgum.workers.dev/door-mode";
+const doorLockToggle = document.getElementById("door-lock-toggle");
+const doorLockIcon = document.getElementById("door-lock-icon");
+
+let currentDoorMode = "knock"; // default
+const DOOR_LOCK_FIRST_KEY = "treefort-door-lock-explained";
+const DOOR_UNLOCK_FIRST_KEY = "treefort-door-unlock-explained";
+
+function updateDoorLockUI() {
+  if (!doorLockToggle || !doorLockIcon) return;
+  if (currentDoorMode === "stalk") {
+    doorLockIcon.src = "./assets/ui/door-unlock.png";
+    doorLockIcon.alt = "Door unlocked";
+    doorLockToggle.title = "Your door is open — everyone is free to visit your room";
+  } else {
+    doorLockIcon.src = "./assets/ui/door-lock.png";
+    doorLockIcon.alt = "Door locked";
+    doorLockToggle.title = "Your door is locked — no one can get in without your password";
+  }
+}
+
+async function toggleDoorMode() {
+  if (!guestParam) return;
+  const newMode = currentDoorMode === "stalk" ? "knock" : "stalk";
+
+  // First-time Gum explanations
+  const lockExplained = localStorage.getItem(DOOR_LOCK_FIRST_KEY);
+  const unlockExplained = localStorage.getItem(DOOR_UNLOCK_FIRST_KEY);
+
+  if (!lockExplained && newMode === "knock") {
+    localStorage.setItem(DOOR_LOCK_FIRST_KEY, "1");
+  }
+
+  if (!unlockExplained && newMode === "stalk") {
+    localStorage.setItem(DOOR_UNLOCK_FIRST_KEY, "1");
+  }
+
+  if (!lockExplained && currentDoorMode === "stalk") {
+    // First time locking — show Gum, then proceed
+    await new Promise((resolve) => {
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: "This Lock icon means you have a password on your door, so no one can see inside your room without knowing your password. If you click it again, you'll unlock your room, which allows anyone to come in and see! Don't worry, they can't ruin anything, they can just click on your things and admire your work. Either way, don't forget that if you don't unlock your door at some point, no one will ever see your room!",
+        actions: [{ label: "Got it!", onClick: resolve }],
+      });
+    });
+  } else if (!unlockExplained && currentDoorMode === "knock") {
+    // First time unlocking — show Gum, then proceed
+    await new Promise((resolve) => {
+      showDialog({
+        speaker: "Gum", frames: GUM_HAPPY,
+        text: "You unlocked your door! Now anyone who visits the tree can walk right in and see your room. They can click around and admire your work, but they can't change anything. You can lock it again any time!",
+        actions: [{ label: "Cool!", onClick: resolve }],
+      });
+    });
+  }
+
+  // Call Worker
+  doorLockToggle.disabled = true;
+  try {
+    const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
+    if (!auth || auth.guestId !== guestParam) return;
+    const res = await fetch(WORKER_DOOR_MODE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guestId: guestParam, passphraseHash: auth.passphraseHash, mode: newMode }),
+    });
+    if (res.ok) {
+      currentDoorMode = newMode;
+      updateDoorLockUI();
+    }
+  } catch { /* silently fail */ }
+  doorLockToggle.disabled = false;
+}
+
+if (doorLockToggle) {
+  doorLockToggle.addEventListener("click", () => void toggleDoorMode());
+}
+
+// ════════════════════════════════════════
 //  Publish Room (Solo / Resident → GitHub)
 // ════════════════════════════════════════
 
@@ -4135,6 +4218,20 @@ async function main() {
   // Show save button for guest rooms, publish button for solo/resident
   if (guestParam && guestSaveButton) {
     guestSaveButton.classList.remove("hidden");
+  }
+
+  // Show door lock toggle for guests
+  if (guestParam && doorLockToggle) {
+    try {
+      const tfRes = await fetch("../data/treefort.json", { cache: "no-store" });
+      if (tfRes.ok) {
+        const tfData = await tfRes.json();
+        const door = tfData.doors?.find((d) => d.id === guestParam);
+        if (door?.access?.mode) currentDoorMode = door.access.mode;
+      }
+    } catch { /* keep default */ }
+    updateDoorLockUI();
+    doorLockToggle.classList.remove("hidden");
   }
   if ((isSolo || isResident) && publishButton) {
     publishButton.classList.remove("hidden");
