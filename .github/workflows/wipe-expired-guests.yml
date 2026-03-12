@@ -30,5 +30,6 @@ jobs:
             echo "No expired rooms to wipe."
           else
             git commit -m "Wipe expired guest rooms [automated]"
+            git pull --rebase
             git push
           fi

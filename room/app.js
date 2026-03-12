@@ -2792,8 +2792,9 @@ navBackwardButton?.addEventListener("click", () => {
   if (activeSpaceId === "main" || !SPACE_PARENT[activeSpaceId]) {
     const treefortLink = manifest?.links?.find((item) => item.href);
     if (treefortLink?.href) {
+      const hubHref = "../index.html";
       const fromId = manifest.roomId || "";
-      window.location.assign(fromId ? `${treefortLink.href}#from=${encodeURIComponent(fromId)}` : treefortLink.href);
+      window.location.assign(fromId ? `${hubHref}#from=${encodeURIComponent(fromId)}` : hubHref);
     }
   }
 });
@@ -2843,8 +2844,9 @@ navTreefortButton?.addEventListener("click", async () => {
   }
   const treefortLink = manifest.links.find((item) => item.href);
   if (treefortLink?.href) {
+    const hubHref = "../index.html";
     const fromId = manifest.roomId || "";
-    window.location.assign(fromId ? `${treefortLink.href}#from=${encodeURIComponent(fromId)}` : treefortLink.href);
+    window.location.assign(fromId ? `${hubHref}#from=${encodeURIComponent(fromId)}` : hubHref);
   }
 });
 

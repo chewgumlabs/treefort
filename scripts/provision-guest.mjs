@@ -105,7 +105,7 @@ function guestRoomTemplate(guestId, guestName, date) {
     owner: { displayName: guestName, siteUrl: "./" },
     presentation: { eyebrow: "Guest room", title: `${guestName}'s Room`, description: "A guest room in the Treefort." },
     updatedAt: date,
-    links: [{ label: "Treefort", href: "../../index.html" }],
+    links: [{ label: "Treefort", href: "../index.html" }],
     stage: { width: 256, height: 192, tileWidth: 4, tileHeight: 4, gridWidth: 64, gridHeight: 48, gutterLeft: 0, gutterRight: 0 },
     limits: {
       maxSpaces: 12, maxLinks: 6, maxPaletteColors: 16, maxAssetCount: 64,
