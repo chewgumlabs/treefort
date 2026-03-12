@@ -1,0 +1,323 @@
+{
+  "hub-lock": {
+    "text": "Oh, this guest doesn't want to be disturbed right now. They might just be cooking! But remember to leave your room now and then to check for open doors!",
+    "actions": [
+      "I'll try every knob!"
+    ]
+  },
+  "hub-knock": {
+    "text": "This guest requested that I get a password from you before letting you in. Enter the password if you know it, or go bug them on Discord!",
+    "actions": [
+      "I totally know it.",
+      "wrong door!"
+    ]
+  },
+  "hub-wrong-passphrase": {
+    "text": "Gosh. Wow. This is embarrassing but... No. That was not the password."
+  },
+  "hub-vacant-1": {
+    "text": "Chew and I built all these rooms for guests. But no one showed. At least you're here.",
+    "actions": [
+      "Where's my room?"
+    ]
+  },
+  "hub-vacant-2": {
+    "text": "Let's go find it! If it's not here, you're either just visiting, or you need to go to the Infinite Hush Discord Server.",
+    "actions": [
+      "Oh alright then."
+    ]
+  },
+  "hub-loading": {
+    "text": "bloating pores"
+  },
+  "hub-error": {
+    "text": "Treefart farter failed to fart. What a shitty error. I guess the treefort.json got corrupted by someone's mom."
+  },
+  "quest-awaiting-key": {
+    "text": "Oh! It's you, {name}! Your room's not quite ready yet! In the mean time, I need you to bring me a drawing of a key, so I can unlock your Sticker Book! It must be drawn on special paper. Here, take this Parchment to Icy, She'll know what to do.",
+    "actions": [
+      "give me the Parchment",
+      "I have my Key!",
+      "Icy?"
+    ]
+  },
+  "quest-icy-explain": {
+    "text": "IcyAnimation is how we all draw our rooms! TreeFort is just for coloring. You can download IcyAnimation at github.com/chewgumlabs/IcyAnimation!",
+    "actions": [
+      "Give me the Parchment.",
+      "I should leave."
+    ]
+  },
+  "quest-awaiting-room": {
+    "text": "I'm afraid I have some bad news... Your room is totally empty. No bed, no rug, not even a floor. If you could take this .Room file to Icy and draw your own floor, rug, and your own bed, then you can come back and color it all here!",
+    "actions": [
+      "I'll take the Room file.",
+      "I already drew my Bed!",
+      "I shouldn't be here."
+    ]
+  },
+  "quest-decorating-main": {
+    "text": "I'm glad you're back, {name}. Oh wow. Your bed looks\u2026 Um\u2026 IcyAnimation doesn't have a lot of color options, huh? I blame Chew. Anyway you'll have tons of colors here! We use a special Living Paint that helps teach The Tree what we place in our rooms. And where. And when. You'll see what I mean soon enough.",
+    "actions": [
+      "oh good."
+    ]
+  },
+  "quest-graduation": {
+    "text": "You've done everything a guest can do. If you want to apply for a permanent residency with us, you can export your guest room and fork TreeFort to host it from your own github account! Linking your custom treefort to the REAL treefort as a door requires manual approval from a human, so do your best before you request! ",
+    "actions": [
+      "Maybe I'll try that."
+    ]
+  },
+  "quest-bonus-intro": {
+    "text": "{glitch} ...y\u0337ou're here. f1nally. {glitch} my room n\u0336eeds DRY and WET \u0338\u0331anything el\u0335se. tell Icy dry and wet r\u0337oom.",
+    "actions": [
+      "How do I draw Dry and Wet?",
+      "I can't do this."
+    ]
+  },
+  "quest-key-accepted": {
+    "text": "Oh how pretty! I'll hold onto your key for now, because I'm afraid I have some bad news...",
+    "actions": [
+      "What?"
+    ]
+  },
+  "quest-key-then-room": {
+    "text": "Your room is still empty. I don't mean empty like you can draw in it, I mean it's a soulless void without even a floor. Take a .Room file to Icy and return with at least a Floor to lay on.",
+    "actions": [
+      "I'll take the Room file",
+      "Sorry"
+    ]
+  },
+  "wave-main-complete": {
+    "text": "You did it! Every single thing in this room has a name. You've unlocked... something. Check the ? button.",
+    "actions": [
+      "!!!"
+    ]
+  },
+  "wave-main-2": {
+    "text": "HAAAAAIIIIIII - did I scare you? This ain't a game. Hey it's looking pretty in here! Some people were complaining about the smell but I don't mind your smell. Maybe people are complaining because all you do is bedrot! Go back to Icy and draw yourself some stuff! Specifically, three stuff. You can export your room with the bottom right menu. Icy know what to do with .Room files, don't worry! ",
+    "actions": [
+      "who said I smell?"
+    ]
+  },
+  "wave-main-3": {
+    "text": "BLAOM BLAOM! I hope I made that word up! Okay you need a window. Hack into the tree. Use it to make a shelf. And then, like our mothers all used to say, \u201cOH GO DRAW A CLOCK!\u201d Because\u2026 Your time\u2026 is almost\u2026 up.",
+    "actions": [
+      "BLAOM."
+    ]
+  },
+  "wave-main-4": {
+    "text": "That's it! Congratulations! Your room finally looks great! Now you should go visit other people's rooms. Or you can invite them to look at yours! Either way enjoy the rest of your stay! Feel free to try redrawing the entire room again now that you've gotten the hang of it!",
+    "actions": [
+      "that's it?"
+    ]
+  },
+  "wave-bonus-complete": {
+    "text": "{glitch} ...y\u0337ou actually d1d it. the room is c\u0338omplete. {glitch} go find your r\u0335eward. if there 1s one.",
+    "actions": [
+      "there isn't one."
+    ]
+  },
+  "wave-bonus-2": {
+    "text": "{glitch} COLD. HOT. {glitch}",
+    "actions": [
+      "Why do you care?"
+    ]
+  },
+  "wave-bonus-3": {
+    "text": "{glitch} LIGHT. DARK. {glitch}",
+    "actions": [
+      "are you learning?"
+    ]
+  },
+  "wave-bonus-4": {
+    "text": "{glitch} LOST. FOUND. {glitch}",
+    "actions": [
+      "lost and found?"
+    ]
+  },
+  "import-main-room": {
+    "text": "{name}! Where did this come from? This is so cool. ",
+    "actions": [
+      "I'm trying!"
+    ]
+  },
+  "import-bonus-room": {
+    "text": "{glitch} ... d\u0337ruid. {glitch} now color all colors. teach r\u0337oom dry w\u0338et.",
+    "actions": [
+      "teach who?"
+    ]
+  },
+  "import-wrong-space-glitch": {
+    "text": "{glitch} N\u0337O N\u0338O N\u0336O. {glitch}"
+  },
+  "import-mine": {
+    "text": "{glitch} m\u0337ine m\u0338ine m\u0336ine."
+  },
+  "hint-floor": {
+    "text": "... A floor is a good thing. Can't get much lower than the floor."
+  },
+  "hint-bed": {
+    "text": "The Tree needs to know where you lay your head at night."
+  },
+  "hint-rug": {
+    "text": "A rug. For housing little dust bunnies."
+  },
+  "hint-desk": {
+    "text": "A Desk. To sit and stare. No wait that's what a chair is for."
+  },
+  "hint-chair": {
+    "text": "Four Legs Good. Six Legs Better. "
+  },
+  "hint-lamp": {
+    "text": "Electricity in The Living Tree? It's that or an open flame."
+  },
+  "hint-window": {
+    "text": "You carved it yourself. Are you proud?"
+  },
+  "hint-shelf": {
+    "text": "Any straight line will do. But only a straight line. Cause stuff would slide off."
+  },
+  "hint-clock": {
+    "text": "Hey Kids. Guess what Time it is...."
+  },
+  "hint-poster": {
+    "text": "Gum left. Forgot to mention the Sticker Book."
+  },
+  "critic-no-goals": {
+    "text": "There's two types of paint. One is for you, one is for The Tree."
+  },
+  "critic-all-complete": {
+    "text": "A Full Room Can Hold No More."
+  },
+  "critic-wave-complete": {
+    "text": "I am so happy for you."
+  },
+  "critic-missing-fallback": {
+    "text": "...this room still needs {label}."
+  },
+  "critic-default": {
+    "text": "... "
+  },
+  "sticker-first-open": {
+    "text": "You've done all you can as a guest here. Take this Sticker Book and fill it up as much as you want until your stay has ended.",
+    "actions": [
+      "Thanks?"
+    ]
+  },
+  "sticker-capture-warning": {
+    "text": "{remaining} CAPTURES REMAINING. NO ONE LIVES FOREVER.",
+    "actions": [
+      "I am aware."
+    ]
+  },
+  "sticker-snapshot-1": {
+    "text": "I captured your room.",
+    "actions": [
+      "Oh I see."
+    ]
+  },
+  "sticker-snapshot-2": {
+    "text": "How do you feel in this room?",
+    "actions": [
+      "This.",
+      "I Feel Nothing."
+    ]
+  },
+  "expiry-warning": {
+    "text": "Your stay is almost up! {daysLeft} day(s) left. Make sure you've finished decorating!",
+    "actions": [
+      "Okay"
+    ]
+  },
+  "expiry-readonly": {
+    "text": "Your room is now read-only. Your stay ends tomorrow — your Sticker Book will be exported for you to keep.",
+    "actions": [
+      "I understand"
+    ]
+  },
+  "expiry-export": {
+    "text": "Your stay has ended. Thank you for visiting! Here's your Sticker Book to take with you. It can also be viewed at the base of the tree. If you want to become a permanent neighbor, fork the Treefort and import this file!",
+    "actions": [
+      "Download my Sticker Book",
+      "Goodbye"
+    ]
+  },
+  "status-locked": {
+    "text": "{title} is locked."
+  },
+  "status-paint-undrawn": {
+    "text": "Colors Colors Everywhere"
+  },
+  "status-labels-undrawn": {
+    "text": "The Special Paint for The Tree"
+  },
+  "status-interactive-undrawn": {
+    "text": "from Icy to Color to the Tree's Paint to an Action is the path of Truth"
+  },
+  "status-paint": {
+    "text": "Smear Colors Everywhere"
+  },
+  "status-labels": {
+    "text": "Smear these where you want friends to click"
+  },
+  "status-interactive": {
+    "text": "Pick a Smear, then shove something in it"
+  },
+  "status-portals": {
+    "text": "???"
+  },
+  "status-quiet": {
+    "text": "There are no secrets in this room."
+  },
+  "status-spot-quiet": {
+    "text": "No secrets here."
+  },
+  "const-bg-notice": {
+    "text": "ROOM COLORS ARE NOT EDITABLE"
+  },
+  "const-room-warning": {
+    "text": "Your tags will be saved, and your colors will be shown on the background side in IcyAnimation for reference. Changes to that reference do not carry back into the bedroom."
+  },
+  "const-support-msg": {
+    "text": "... Support lines let a pet know where it can stand and walk. If one arrives..."
+  },
+  "inst-parchment": {
+    "text": "Oh wow! Who gave you a Magic Parchment? These are for drawing Keys! Be careful. And remember you can only draw your Key once. Your key is forever."
+  },
+  "inst-room-file": {
+    "text": "Holy crap Gum gave you a room? That's crazy. Dang. Wait you didn't give him your Key did you? Never mind. Best to just focus on the floor. And bed!"
+  },
+  "inst-bonus-room": {
+    "text": "Who gave you this? You shouldn't have this."
+  },
+  "inst-bonus-chew": {
+    "text": "Why am I here? I don't remember leaving."
+  },
+  "placeholder-main": {
+    "text": "Draw this room in IcyAnimation to reveal it."
+  },
+  "placeholder-bonus": {
+    "text": "Draw in IcyAnimation to reveal."
+  },
+  "publish-setup-intro": {
+    "text": "To publish your room so your friends can see it, I need a GitHub token. It's like a key that lets your TreeFort update itself. Want me to walk you through it?",
+    "actions": ["Walk me through it", "I already have one"]
+  },
+  "publish-setup-step1": {
+    "text": "Go to github.com/settings/tokens and click 'Fine-grained tokens', then 'Generate new token'. Name it 'TreeFort'. Set it to only access your TreeFort repo. Under Permissions, find 'Contents' and set it to 'Read and write'. Copy the token!",
+    "actions": ["I copied it!"]
+  },
+  "publish-setup-paste": {
+    "text": "Paste your token here. I'll only store it on YOUR computer, in this browser. It never touches my server.",
+    "actions": ["Save token", "Cancel"]
+  },
+  "publish-success": {
+    "text": "Published! Your room is live. It might take a minute or two for GitHub Pages to update.",
+    "actions": ["Nice!"]
+  },
+  "publish-error": {
+    "text": "Publish failed: {error}",
+    "actions": ["Try again", "Okay"]
+  }
+}

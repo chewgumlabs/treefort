@@ -5,3 +5,4 @@ node_modules/
 *.mp4
 *.tflite
 *.task
+CHANGELOG_INTERNAL.md

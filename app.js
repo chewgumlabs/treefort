@@ -1,5 +1,3 @@
-const heroTitle = document.getElementById("hero-title");
-const heroLede = document.getElementById("hero-lede");
 const doorField = document.getElementById("door-field");
 const skyStack = document.getElementById("sky-stack");
 const treeBuildLayer = document.getElementById("tree-build-layer");
@@ -34,6 +32,7 @@ const roomById = new Map();
 let activeRoomId = null;
 let treefortConfig = {};
 let pendingSkyRender = 0;
+let DIALOG = {};
 
 function skyImageUrl(n) {
   return `./assets/background/SKY-ATLAS${n}.jpeg`;
@@ -104,11 +103,34 @@ function scheduleSkyRender() {
   });
 }
 
-const TRUNK_REPEATS = 6;
 const TRUNK_SEGMENT_H = 240;
 const BASE_H = 964;
-const TRUNK_INNER_LEFT = 0.35;
-const TRUNK_INNER_RIGHT = 0.65;
+let segmentCount = 0;
+
+// Door slot config — pixel positions measured from 1024×240 segment sprite bounding boxes
+const SLOT_CONFIG = {
+  a: { x: 435, y: 157, w: 40, h: 44, xPixel: 453, floorOffset: 0 },
+  b: { x: 495, y: 157, w: 40, h: 44, xPixel: 513, floorOffset: 0 },
+  c: { x: 435, y:  39, w: 40, h: 44, xPixel: 453, floorOffset: 1 },
+  d: { x: 495, y:  39, w: 40, h: 44, xPixel: 513, floorOffset: 1 },
+};
+
+function slotToFloor(segment, slot) {
+  return segment * 2 + SLOT_CONFIG[slot].floorOffset;
+}
+
+
+function doorSpriteState(room) {
+  const isPermanent = room.type === "permanent";
+  if (room.status === "vacant" || room.status === "unclaimed") {
+    return isPermanent ? "PermanentAvailable" : "Unclaimed";
+  }
+  const mode = room.access?.mode;
+  if (mode === "knock") return isPermanent ? "PermanentKnock" : "Knock";
+  if (mode === "lock") return isPermanent ? "PermanentLock" : "Lock";
+  if (mode === "stalk") return isPermanent ? "PermanentStalk" : "Stalk";
+  return isPermanent ? "PermanentAvailable" : "Unclaimed";
+}
 
 function renderTree() {
   if (!treeBuildLayer) {
@@ -129,25 +151,32 @@ function renderTree() {
   // Crown
   treeBuildLayer.appendChild(img("./assets/tree/top.png", "tree-crown"));
 
-  // Trunk — two layers overlaid (UL behind character, OL in front)
+  // Trunk — three layers: UL (back), door sprites (middle), OL with platforms (front)
   const trunkWrap = document.createElement("div");
   trunkWrap.className = "tree-trunk-wrap";
-  trunkWrap.style.height = `${TRUNK_REPEATS * TRUNK_SEGMENT_H}px`;
+  trunkWrap.style.height = `${segmentCount * TRUNK_SEGMENT_H}px`;
 
   const trunkBack = document.createElement("div");
   trunkBack.className = "tree-trunk-back";
-  for (let i = 0; i < TRUNK_REPEATS; i++) {
+  for (let i = 0; i < segmentCount; i++) {
     trunkBack.appendChild(img("./assets/tree/segment_UL.png", "tree-trunk-segment"));
   }
 
+  const trunkDoors = document.createElement("div");
+  trunkDoors.className = "tree-trunk-doors";
+  trunkDoors.id = "tree-trunk-doors";
+  // Door sprites are added later by renderDoorSprites()
+
   const trunkFront = document.createElement("div");
   trunkFront.className = "tree-trunk-front";
-  for (let i = 0; i < TRUNK_REPEATS; i++) {
+  for (let i = 0; i < segmentCount; i++) {
     trunkFront.appendChild(img("./assets/tree/segment_OL.png", "tree-trunk-segment"));
   }
 
   trunkWrap.appendChild(trunkBack);
+  trunkWrap.appendChild(trunkDoors);
   trunkWrap.appendChild(trunkFront);
+  createElevator(trunkWrap);
   treeBuildLayer.appendChild(trunkWrap);
 
   // Base — three layers stacked (underlay, island, overlay)
@@ -156,8 +185,188 @@ function renderTree() {
   baseWrap.appendChild(img("./assets/tree/base1.png", "tree-base-layer"));
   baseWrap.appendChild(img("./assets/tree/base2.png", "tree-base-layer"));
   baseWrap.appendChild(img("./assets/tree/base3.png", "tree-base-layer"));
+
+  // Sticker books on the grass
+  const bookLayer = document.createElement("div");
+  bookLayer.className = "tree-book-layer";
+  bookLayer.id = "tree-book-layer";
+  baseWrap.appendChild(bookLayer);
+
   treeBuildLayer.appendChild(baseWrap);
 }
+
+// ── Sticker Books at base of tree ─────────────
+
+// ── Sticker book slot positions (hardcoded, 1024×964 base coords) ──
+// 64 fixed slots on the grass. Do not reorder — removing a book leaves its slot empty.
+//
+// Row A (y=372): A1–A5 [trunk] A6–A9
+// Row B (y=408): B1–B6 [trunk] B7–B11
+// Row C (y=444): C1–C13
+// Row D (y=480): D1–D13
+// Row E (y=516): E1–E13
+// Edge:          L1–L3 (left)  R1–R2 (right)
+const BOOK_SLOTS = [
+  /* A1 */[222,372], /* A2 */[270,372], /* A3 */[318,372], /* A4 */[366,372], /* A5 */[414,372],
+  /* A6 */[654,372], /* A7 */[702,372], /* A8 */[750,372], /* A9 */[798,372],
+  /* B1 */[222,408], /* B2 */[270,408], /* B3 */[318,408], /* B4 */[366,408], /* B5 */[414,408],
+  /* B6 */[462,408], /* B7 */[606,408], /* B8 */[654,408], /* B9 */[702,408], /* B10*/[750,408],
+  /* B11*/[798,408],
+  /* C1 */[222,444], /* C2 */[270,444], /* C3 */[318,444], /* C4 */[366,444], /* C5 */[414,444],
+  /* C6 */[462,444], /* C7 */[510,444], /* C8 */[558,444], /* C9 */[606,444], /* C10*/[654,444],
+  /* C11*/[702,444], /* C12*/[750,444], /* C13*/[798,444],
+  /* D1 */[222,480], /* D2 */[270,480], /* D3 */[318,480], /* D4 */[366,480], /* D5 */[414,480],
+  /* D6 */[462,480], /* D7 */[510,480], /* D8 */[558,480], /* D9 */[606,480], /* D10*/[654,480],
+  /* D11*/[702,480], /* D12*/[750,480], /* D13*/[798,480],
+  /* E1 */[222,516], /* E2 */[270,516], /* E3 */[318,516], /* E4 */[366,516], /* E5 */[414,516],
+  /* E6 */[462,516], /* E7 */[510,516], /* E8 */[558,516], /* E9 */[606,516], /* E10*/[654,516],
+  /* E11*/[702,516], /* E12*/[750,516], /* E13*/[798,516],
+  /* L1 */[174,408], /* L2 */[174,444], /* L3 */[174,480],
+  /* R1 */[846,408], /* R2 */[846,444],
+];
+
+// Pseudo-random fill order (seed 42) — books scatter across the grass as they arrive
+const BOOK_FILL_ORDER = [
+  43,51,20,56,11,23,18,39,34,17,37,12,8,26,58,44,3,29,16,22,6,4,41,33,
+  30,14,47,60,53,49,54,50,27,5,45,19,61,7,42,59,1,55,2,36,21,0,62,32,
+  24,9,57,63,46,13,25,48,35,15,31,10,40,52,28,38,
+];
+
+function renderStickerBooks(stickerBooks) {
+  const layer = document.getElementById("tree-book-layer");
+  if (!layer) return;
+  layer.replaceChildren();
+
+  const books = stickerBooks || [];
+  for (let i = 0; i < Math.min(books.length, BOOK_SLOTS.length); i++) {
+    const book = books[i];
+    const slotIdx = book.slot ?? i;
+    const [sx, sy] = BOOK_SLOTS[slotIdx];
+
+    const wrap = document.createElement("div");
+    wrap.className = "sbook-slot";
+    wrap.style.left = `${sx}px`;
+    wrap.style.top = `${sy}px`;
+
+    const label = document.createElement("p");
+    label.className = "sbook-label";
+    label.textContent = book.name;
+
+    const icon = document.createElement("img");
+    icon.className = "sbook-icon";
+    icon.src = "./assets/tree/sbook.png";
+    icon.alt = `${book.name}'s sticker book`;
+    icon.draggable = false;
+
+    wrap.appendChild(label);
+    wrap.appendChild(icon);
+    wrap.addEventListener("click", () => openStickerBook(book));
+    layer.appendChild(wrap);
+  }
+}
+
+// ── Sticker Book Viewer ──
+
+let sbookPages = [];
+let sbookIndex = 0;
+
+function getStickerBookPages(data) {
+  const pages = [];
+  if (data.keyArt) {
+    pages.push({ type: "key", label: "Key Art", dataUrl: data.keyArt });
+  }
+  const stickers = data.stickers || [];
+  for (const s of stickers) {
+    pages.push({ type: "snapshot", label: s.label, date: s.date, caption: s.caption, dataUrl: s.dataUrl });
+  }
+  if (pages.length === 0) {
+    pages.push({ type: "empty", label: "Empty" });
+  }
+  return pages;
+}
+
+function renderSbookPage() {
+  const pageEl = document.getElementById("sbook-viewer-page");
+  const pageNum = document.getElementById("sbook-viewer-pagenum");
+  const leftBtn = document.getElementById("sbook-viewer-left");
+  const rightBtn = document.getElementById("sbook-viewer-right");
+  if (!pageEl) return;
+
+  if (sbookIndex < 0) sbookIndex = 0;
+  if (sbookIndex >= sbookPages.length) sbookIndex = sbookPages.length - 1;
+  const page = sbookPages[sbookIndex];
+
+  pageEl.replaceChildren();
+
+  if (page.type === "empty") {
+    const p = document.createElement("p");
+    p.className = "sbook-viewer__empty";
+    p.textContent = "No stickers yet";
+    pageEl.appendChild(p);
+  } else {
+    const img = document.createElement("img");
+    img.src = page.dataUrl;
+    img.alt = page.label || "Sticker";
+    pageEl.appendChild(img);
+    if (page.caption || page.date) {
+      const line = document.createElement("p");
+      line.className = "sbook-viewer__caption";
+      const parts = [];
+      if (page.caption) parts.push(page.caption);
+      if (page.date) parts.push(page.date);
+      line.textContent = parts.join("  ");
+      pageEl.appendChild(line);
+    }
+  }
+
+  const label = page.label || `${sbookIndex + 1} / ${sbookPages.length}`;
+  if (pageNum) pageNum.textContent = label;
+  if (leftBtn) leftBtn.disabled = sbookIndex === 0;
+  if (rightBtn) rightBtn.disabled = sbookIndex >= sbookPages.length - 1;
+}
+
+async function openStickerBook(book) {
+  const viewer = document.getElementById("sbook-viewer");
+  const ownerEl = document.getElementById("sbook-viewer-owner");
+  if (!viewer || !ownerEl) return;
+
+  ownerEl.textContent = `${book.name}'s Sticker Book`;
+
+  // Try to fetch full sticker book data
+  try {
+    const resp = await fetch(`./data/stickerbooks/${book.guestId}.json`);
+    if (resp.ok) {
+      const data = await resp.json();
+      sbookPages = getStickerBookPages(data);
+    } else {
+      sbookPages = [{ type: "empty", label: "Empty" }];
+    }
+  } catch {
+    sbookPages = [{ type: "empty", label: "Empty" }];
+  }
+
+  sbookIndex = 0;
+  viewer.classList.remove("hidden");
+  renderSbookPage();
+}
+
+function closeStickerBook() {
+  const viewer = document.getElementById("sbook-viewer");
+  if (viewer) viewer.classList.add("hidden");
+  sbookPages = [];
+  sbookIndex = 0;
+}
+
+document.getElementById("sbook-viewer-close")?.addEventListener("click", closeStickerBook);
+document.getElementById("sbook-viewer-x")?.addEventListener("click", closeStickerBook);
+document.getElementById("sbook-viewer-left")?.addEventListener("click", () => {
+  sbookIndex--;
+  renderSbookPage();
+});
+document.getElementById("sbook-viewer-right")?.addEventListener("click", () => {
+  sbookIndex++;
+  renderSbookPage();
+});
 
 function waitForTreeImages() {
   const images = treeBuildLayer.querySelectorAll("img");
@@ -174,23 +383,6 @@ function waitForTreeImages() {
   return Promise.all(promises);
 }
 
-function positionDoorField() {
-  const trunkWrap = treeBuildLayer.querySelector(".tree-trunk-wrap");
-  if (!trunkWrap) {
-    return;
-  }
-
-  const worldRect = treeWorld.getBoundingClientRect();
-  const trunkRect = trunkWrap.getBoundingClientRect();
-
-  const innerLeft = trunkRect.left + trunkRect.width * TRUNK_INNER_LEFT;
-  const innerWidth = trunkRect.width * (TRUNK_INNER_RIGHT - TRUNK_INNER_LEFT);
-
-  doorField.style.top = `${trunkRect.top - worldRect.top}px`;
-  doorField.style.left = `${innerLeft - worldRect.left}px`;
-  doorField.style.width = `${innerWidth}px`;
-  doorField.style.height = `${trunkRect.height}px`;
-}
 
 const TREE_SCALE = 2;
 
@@ -246,104 +438,94 @@ function guestLifecycle(room, rules) {
   return { phase, day: elapsed, daysLeft, hoursLeft, msLeft };
 }
 
-function formatCountdown(lifecycle) {
-  if (!lifecycle || lifecycle.phase === "active") {
-    return null;
-  }
-
-  if (lifecycle.phase === "expired") {
-    return "Expired";
-  }
-
-  if (lifecycle.daysLeft <= 1) {
-    return `${lifecycle.hoursLeft}h left`;
-  }
-
-  return `${lifecycle.daysLeft}d left`;
-}
 
 function renderDoors(rooms, rules) {
-  doorField.querySelectorAll(".door, .tree-message, .floor-platform").forEach((node) => node.remove());
+  const trunkDoors = document.getElementById("tree-trunk-doors");
+  if (!trunkDoors) return;
+  trunkDoors.replaceChildren();
+  doorField.querySelectorAll(".tree-message").forEach((n) => n.remove());
   roomById.clear();
 
-  const floorCount = TRUNK_REPEATS;
-  const floorH = 100 / floorCount;
-
-  const floors = Array.from({ length: floorCount }, () => []);
-  rooms.forEach((room) => {
-    const floor = room.floor != null ? room.floor : 0;
-    if (floor < floorCount) {
-      floors[floor].push(room);
-    }
-  });
-
-  for (let i = 0; i < floorCount; i++) {
-    const platformY = (floorCount - i) * floorH;
-    const platform = document.createElement("div");
-    platform.className = "floor-platform";
-    platform.style.top = `${platformY}%`;
-    doorField.appendChild(platform);
-
-    const floorRooms = floors[i];
-    floorRooms.forEach((room, doorIdx) => {
-      roomById.set(room.id, room);
-
-      const isVacant = room.type === "guest" && room.status === "vacant";
-      const lifecycle = guestLifecycle(room, rules);
-      const isExpired = lifecycle && lifecycle.phase === "expired";
-
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "door";
-      button.dataset.roomId = room.id;
-      button.style.left = `${18 + doorIdx * 22}%`;
-      button.style.top = `${platformY}%`;
-
-      if (isVacant) {
-        button.dataset.state = "vacant";
-        button.setAttribute("aria-label", "Vacant guest room");
-        button.innerHTML = `<span class="door-label">Vacant</span>`;
-        button.disabled = true;
-      } else if (isExpired) {
-        button.dataset.state = "expired";
-        button.setAttribute("aria-label", `${room.name}, expired`);
-        button.innerHTML = `<span class="door-label">${room.name}</span>`;
-        button.disabled = true;
-      } else {
-        button.dataset.state = room.access?.mode || "stalk";
-        button.setAttribute("aria-label", `${room.name}, ${modeLabel(room.access?.mode || "open")}`);
-
-        const countdown = formatCountdown(lifecycle);
-        let lifecycleTag = "";
-        if (countdown) {
-          const urgency = lifecycle.phase === "export" ? "door-countdown--final"
-            : lifecycle.phase === "readonly" ? "door-countdown--urgent"
-            : "";
-          lifecycleTag = `<span class="door-countdown ${urgency}">${countdown}</span>`;
-        }
-
-        button.innerHTML = `
-          <span class="door-knob"></span>
-          ${lifecycleTag}
-          <span class="door-label">${room.name}</span>
-        `;
-
-        button.addEventListener("click", () => {
-          activeRoomId = room.id;
-          document.querySelectorAll(".door").forEach((door) => {
-            door.classList.toggle("is-selected", door.dataset.roomId === room.id);
-          });
-          handleDoorAction(room.id);
-        });
-      }
-
-      doorField.appendChild(button);
-    });
+  // Create one segment wrap per segment
+  const segWraps = [];
+  for (let s = 0; s < segmentCount; s++) {
+    const segWrap = document.createElement("div");
+    segWrap.className = "door-segment-wrap";
+    trunkDoors.appendChild(segWrap);
+    segWraps.push(segWrap);
   }
+
+  rooms.forEach((room) => {
+    if (room.segment == null || !room.slot) return;
+    roomById.set(room.id, room);
+
+    const visualSeg = (segmentCount - 1) - room.segment;
+    const wrap = segWraps[visualSeg];
+    if (!wrap) return;
+
+    const slot = SLOT_CONFIG[room.slot];
+    const floor = slotToFloor(room.segment, room.slot);
+
+    // Door sprite
+    const state = doorSpriteState(room);
+    const sprite = document.createElement("img");
+    sprite.src = `./assets/tree/doors/${room.slot}${state}.png`;
+    sprite.className = "door-sprite";
+    sprite.draggable = false;
+    sprite.alt = "";
+    wrap.appendChild(sprite);
+
+    // Hitbox button — exact pixel position from sprite bbox
+    const isVacant = room.status === "vacant";
+    const isUnclaimed = room.status === "unclaimed";
+    const lifecycle = guestLifecycle(room, rules);
+    const isExpired = lifecycle && lifecycle.phase === "expired";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "door";
+    button.dataset.roomId = room.id;
+    button.dataset.floor = String(floor);
+    button.style.position = "absolute";
+    button.style.left = `${slot.x}px`;
+    button.style.top = `${slot.y}px`;
+    button.style.width = `${slot.w}px`;
+    button.style.height = `${slot.h}px`;
+
+    if (isVacant || isUnclaimed) {
+      button.setAttribute("aria-label", isVacant ? "Vacant guest room" : "Unclaimed room");
+      button.addEventListener("click", () => {
+        elevVisitDoorThenDialog(room);
+      });
+    } else if (isExpired) {
+      button.disabled = true;
+      button.setAttribute("aria-label", `${room.name}, expired`);
+    } else {
+      button.setAttribute("aria-label", `${room.name}, ${modeLabel(room.access?.mode || "open")}`);
+      button.addEventListener("click", () => {
+        elevVisitDoor(room);
+      });
+    }
+
+    // Label
+    if (room.name) {
+      const possessiveMatch = room.name.match(/^(.+?)['']s\s+Room$/i);
+      const labelHTML = possessiveMatch
+        ? `${possessiveMatch[1]}'s<br>Room`
+        : room.name;
+      button.innerHTML = `<span class="door-label">${labelHTML}</span>`;
+    } else if (isVacant) {
+      button.innerHTML = `<span class="door-label door-label--vacant">Room<br>Available</span>`;
+    } else if (isUnclaimed) {
+      button.innerHTML = `<span class="door-label door-label--vacant">Unclaimed</span>`;
+    }
+
+    wrap.appendChild(button);
+  });
 }
 
 function renderTreeMessage(message) {
-  doorField.querySelectorAll(".door, .tree-message").forEach((node) => node.remove());
+  doorField.querySelectorAll(".door, .tree-message, .door-sprite").forEach((node) => node.remove());
   const messageNode = document.createElement("p");
   messageNode.className = "tree-message";
   messageNode.textContent = message;
@@ -368,17 +550,16 @@ function handleDoorAction(roomId) {
   }
 
   if (room.access.mode === "stalk") {
+    sessionStorage.setItem("treefort-last-door", roomId);
     window.location.href = room.href;
     return;
   }
 
   if (room.access.mode === "lock") {
-    showModal({
-      kicker: "Locked door",
-      title: room.name,
-      message:
-        "This room participates in the tree, but it only opens from the kid's own website. The hub just shows the door.",
-      showKnock: false,
+    showGumDialog({
+      frames: GUM_HAPPY,
+      text: DIALOG["hub-lock"]?.text || "This room is locked.",
+      actions: [{ label: DIALOG["hub-lock"]?.actions?.[0] || "Okay!", onClick: hideGumDialog }],
     });
     return;
   }
@@ -415,14 +596,27 @@ function handleDoorAction(roomId) {
     return;
   }
 
-  showModal({
-    kicker: "Knock knock",
-    title: room.name,
-    message: room.access.encryptedHref
-      ? "This room is locked with a passphrase. Only someone who knows the secret word can open it."
-      : "This is a playful password gate. Type the secret word to open the door.",
-    showKnock: true,
-    hint: room.access.hint || "",
+  showGumDialog({
+    frames: GUM_HAPPY,
+    text: DIALOG["hub-knock"]?.text || "Enter the password.",
+    actions: [{
+      label: DIALOG["hub-knock"]?.actions?.[0] || "I know it!",
+      onClick: () => {
+        hideGumDialog();
+        showModal({
+          kicker: "Knock knock",
+          title: room.name,
+          message: room.access.encryptedHref
+            ? "Type the secret word to open the door."
+            : "Type the secret word to open the door.",
+          showKnock: true,
+          hint: room.access.hint || "",
+        });
+      },
+    }, {
+      label: DIALOG["hub-knock"]?.actions?.[1] || "Never mind",
+      onClick: hideGumDialog,
+    }],
   });
 }
 
@@ -450,24 +644,6 @@ async function deriveKey(passphrase, salt) {
     false,
     ["encrypt", "decrypt"],
   );
-}
-
-async function encryptString(plaintext, passphrase) {
-  const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(passphrase, salt);
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    encoder.encode(plaintext),
-  );
-
-  const blob = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
-  blob.set(salt, 0);
-  blob.set(iv, salt.length);
-  blob.set(new Uint8Array(ciphertext), salt.length + iv.length);
-  return btoa(String.fromCharCode(...blob));
 }
 
 async function decryptString(encoded, passphrase) {
@@ -534,12 +710,6 @@ modal.addEventListener("click", (event) => {
   }
 });
 
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !modal.classList.contains("hidden")) {
-    hideModal();
-  }
-});
-
 knockForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const room = roomById.get(activeRoomId);
@@ -555,21 +725,23 @@ knockForm.addEventListener("submit", async (event) => {
       const href = await decryptString(room.access.encryptedHref, passphrase);
       const hash = await sha256Hex(passphrase);
       sessionStorage.setItem("treefort-guest-auth", JSON.stringify({ guestId: room.id, passphraseHash: hash }));
+      sessionStorage.setItem("treefort-last-door", room.id);
       window.location.href = href;
       return;
     } catch {
-      modalMessage.textContent = "Wrong passphrase. The door stays shut.";
+      modalMessage.textContent = DIALOG["hub-wrong-passphrase"]?.text || "Wrong passphrase.";
       return;
     }
   }
 
   // Level 1 fallback: hash compare with plaintext href
   if ((await sha256Hex(passphrase)) === room.access.passphraseHash) {
+    sessionStorage.setItem("treefort-last-door", room.id);
     window.location.href = room.href;
     return;
   }
 
-  modalMessage.textContent = "Wrong passphrase. The door stays shut.";
+  modalMessage.textContent = DIALOG["hub-wrong-passphrase"]?.text || "Wrong passphrase.";
 });
 
 async function loadTreefort() {
@@ -583,12 +755,6 @@ async function loadTreefort() {
 
 function applyTreefortCopy(treefort) {
   treefortConfig = treefort;
-  if (heroTitle) {
-    heroTitle.textContent = treefort.title;
-  }
-  if (heroLede) {
-    heroLede.textContent = treefort.lede;
-  }
 }
 
 function scrollToWorldBase() {
@@ -604,6 +770,9 @@ function primeWorldStartPosition() {
   if ("scrollRestoration" in window.history) {
     window.history.scrollRestoration = "manual";
   }
+
+  // Don't pre-snap if returning from a room — init will handle scroll
+  if (window.location.hash.startsWith("#from=") || sessionStorage.getItem("treefort-last-door")) return;
 
   let snapped = false;
   const snapToBase = () => {
@@ -621,69 +790,646 @@ function primeWorldStartPosition() {
 
 let cachedManifest = null;
 
-function tickCountdowns() {
-  if (!cachedManifest) {
-    return;
+
+// ── Elevator ──
+// States: idle (in elevator), riding (moving vertically), walking (on a floor)
+// Gum is a 27×37 cropped sprite positioned independently from the 1024×240 box sprites.
+
+const ELEV_FRAME_MS = 1000 / 12;
+const ELEV_SPEED = 480;
+const GUM_WALK_SPEED = 160;
+const GUM_HOME_X = 577;
+const GUM_W = 27;
+const GUM_H = 37;
+const ROPE_TOP_OFFSET = 55;
+
+let elev = {
+  y: 0, targetY: 0, floor: 0, _targetFloor: 0,
+  state: "idle", dir: 0, facingRight: false,
+  gumX: GUM_HOME_X, targetX: GUM_HOME_X,
+  walkIdx: 0, walkAcc: 0,
+  lastT: 0, scrollDriven: true,
+  _queuedFloor: null, _pendingDoor: null, _pendingDialog: null,
+};
+let elevEls = {};
+
+function elevTotalFloors() { return segmentCount * 2; }
+
+function elevFloorY(f) {
+  const seg = f >> 1, isCD = f & 1;
+  const vs = (segmentCount - 1) - seg;
+  return vs * TRUNK_SEGMENT_H + (isCD ? 82 : 200);
+}
+
+function elevFloorPrefix(f) { return (f & 1) ? "CD" : "AB"; }
+
+function elevSrc(name) { return `./assets/tree/elevator/${name}.png`; }
+function gumSrc(name) { return `./assets/tree/elevator/gum/${name}.png`; }
+
+function elevFloorStops() {
+  return [
+    { x: SLOT_CONFIG.a.xPixel },  // 453
+    { x: SLOT_CONFIG.b.xPixel },  // 513
+    { x: GUM_HOME_X },            // elevator home
+  ];
+}
+
+function elevNearestDoor(floor, gumX) {
+  const seg = floor >> 1;
+  const slots = (floor & 1) ? ["c", "d"] : ["a", "b"];
+  let best = null, bestDist = Infinity;
+  for (const slot of slots) {
+    const dx = Math.abs(SLOT_CONFIG[slot].xPixel - gumX);
+    if (dx < bestDist) { bestDist = dx; best = { slot, seg }; }
   }
-
-  const rules = cachedManifest.treefort.guestRules;
-  const badges = doorField.querySelectorAll(".door-countdown");
-  let hasHourly = false;
-
-  badges.forEach((badge) => {
-    const button = badge.closest(".door");
-    if (!button) {
-      return;
+  if (best && bestDist < 20) {
+    for (const [, room] of roomById) {
+      if (room.segment === best.seg && room.slot === best.slot) return room;
     }
+  }
+  return null;
+}
 
-    const room = roomById.get(button.dataset.roomId);
-    if (!room) {
-      return;
-    }
+function createElevator(trunkWrap) {
+  const layer = document.createElement("div");
+  layer.className = "elevator-layer";
 
-    const lifecycle = guestLifecycle(room, rules);
-    const text = formatCountdown(lifecycle);
-    if (text) {
-      badge.textContent = text;
-    }
+  const rope = document.createElement("div");
+  rope.className = "elevator-rope";
 
-    if (lifecycle && lifecycle.daysLeft <= 1 && lifecycle.phase !== "expired") {
-      hasHourly = true;
+  const makeBox = (src, cls) => {
+    const img = document.createElement("img");
+    img.src = elevSrc(src);
+    img.className = `elevator-sprite ${cls}`;
+    img.draggable = false;
+    img.alt = "";
+    return img;
+  };
+
+  const ul = makeBox("elevatorAB_UL", "elevator-box-ul");
+  const ol = makeBox("elevatorAB_OL", "elevator-box-ol");
+
+  const gum = document.createElement("img");
+  gum.src = gumSrc("arrive");
+  gum.className = "elevator-gum";
+  gum.draggable = false;
+  gum.alt = "Gum";
+
+  // Clickable cage hitbox — narrow div over just the elevator cage
+  const cageHit = document.createElement("div");
+  cageHit.style.cssText = "position:absolute;width:60px;height:80px;cursor:pointer;pointer-events:auto;z-index:5;";
+  cageHit.addEventListener("click", () => {
+    if (elev.state === "idle" && Math.abs(elev.gumX - GUM_HOME_X) > 2) {
+      elev.scrollDriven = false;
+      elev._pendingDoor = null;
+      elev._pendingDialog = null;
+      elev.targetX = GUM_HOME_X;
+      elev.state = "walking";
+      elev.walkIdx = 0;
+      elev.walkAcc = 0;
     }
   });
 
-  const interval = hasHourly ? 60000 : 300000;
-  setTimeout(tickCountdowns, interval);
+  layer.append(rope, ul, gum, ol, cageHit);
+  trunkWrap.appendChild(layer);
+
+  elevEls = { layer, rope, ul, gum, ol, cageHit };
+
+  // Preload all sprites to prevent flash on first swap
+  ["elevatorAB_UL", "elevatorAB_OL", "elevatorCD_UL", "elevatorCD_OL", "elevator_ropeExtension"].forEach(n => {
+    new Image().src = elevSrc(n);
+  });
+  ["arrive", "atDoor", "eyesUp", "eyesDown", "walk01", "walk02", "walk03", "walk04"].forEach(n => {
+    new Image().src = gumSrc(n);
+  });
+
+  elev.floor = 0;
+  elev._targetFloor = 0;
+  elev._lastPrefix = "AB";
+  elev.y = elev.targetY = elevFloorY(0);
+  elev.gumX = GUM_HOME_X;
+  elev.targetX = GUM_HOME_X;
+  elevPosition();
 }
 
+function elevPosition() {
+  const y = Math.round(elev.y);
+
+  // Box sprites — use target floor prefix during rides to prevent flash on arrival
+  const displayFloor = elev.state === "riding" ? elev._targetFloor : elev.floor;
+  const p = elevFloorPrefix(displayFloor);
+  const platformPx = (displayFloor & 1) ? 82 : 200;
+  const boxTop = y - platformPx;
+  elevEls.ul.style.top = elevEls.ol.style.top = `${boxTop}px`;
+  if (elev._lastPrefix !== p) {
+    elev._lastPrefix = p;
+    elevEls.ul.src = elevSrc(`elevator${p}_UL`);
+    elevEls.ol.src = elevSrc(`elevator${p}_OL`);
+  }
+
+  // Gum (27×37) — feet at platform Y + 2px nudge, centered on gumX
+  elevEls.gum.style.top = `${y - GUM_H + 2}px`;
+  elevEls.gum.style.left = `${Math.round(elev.gumX - GUM_W / 2)}px`;
+  elevEls.gum.style.transform = elev.facingRight ? "scaleX(-1)" : "";
+
+  // Cage hitbox — centered on elevator home position
+  elevEls.cageHit.style.top = `${y - platformPx + 80}px`;
+  elevEls.cageHit.style.left = `${GUM_HOME_X - 30}px`;
+
+  // Rope
+  elevEls.rope.style.height = `${Math.max(0, y - ROPE_TOP_OFFSET)}px`;
+}
+
+function elevSetGum(name) { elevEls.gum.src = gumSrc(name); }
+
+function elevGoTo(floor) {
+  floor = Math.max(0, Math.min(elevTotalFloors() - 1, floor));
+
+  if (Math.abs(elev.gumX - GUM_HOME_X) > 2) {
+    elev.targetX = GUM_HOME_X;
+    elev.state = "walking";
+    elev._queuedFloor = floor;
+    elev.scrollDriven = false;
+    return;
+  }
+
+  const effective = elev.state === "riding" ? elev._targetFloor : elev.floor;
+  if (floor === effective) return;
+
+  elev._targetFloor = floor;
+  elev.targetY = elevFloorY(floor);
+  elev.facingRight = false;
+  if (Math.abs(elev.targetY - elev.y) < 1) {
+    elev.y = elev.targetY;
+    elev.floor = floor;
+    elev.state = "idle";
+    elevSetGum("arrive");
+    elevPosition();
+    return;
+  }
+  elev.state = "riding";
+  elev.dir = elev.targetY > elev.y ? 1 : -1;
+  elevSetGum(elev.dir < 0 ? "eyesUp" : "eyesDown");
+}
+
+function elevWalk(dir) {
+  if (elev.state === "riding") return;
+  elev.scrollDriven = false;
+  elev._queuedFloor = null;
+  elev._pendingDoor = null;
+  elev._pendingDialog = null;
+
+  const stops = elevFloorStops();
+  let newTarget = null;
+  if (dir < 0) {
+    for (let i = stops.length - 1; i >= 0; i--) {
+      if (stops[i].x < elev.gumX - 2) { newTarget = stops[i].x; break; }
+    }
+  } else {
+    for (let i = 0; i < stops.length; i++) {
+      if (stops[i].x > elev.gumX + 2) { newTarget = stops[i].x; break; }
+    }
+  }
+  if (newTarget == null) return;
+  elev.targetX = newTarget;
+  elev.state = "walking";
+  elev.walkIdx = 0;
+  elev.walkAcc = 0;
+}
+
+function elevTick(now) {
+  if (!elev.lastT) elev.lastT = now;
+  const dt = Math.min((now - elev.lastT) / 1000, 0.1);
+  elev.lastT = now;
+
+  if (elev.state === "riding") {
+    const dist = Math.abs(elev.targetY - elev.y);
+    const step = ELEV_SPEED * dt;
+    if (dist <= step) {
+      elev.y = elev.targetY;
+      elev.floor = elev._targetFloor;
+      elev.state = "idle";
+      elev.dir = 0;
+      elevSetGum("arrive");
+      // After arriving at a floor, walk to pending door/dialog if set
+      const pending = elev._pendingDoor || elev._pendingDialog;
+      if (pending) {
+        const doorX = SLOT_CONFIG[pending.slot].xPixel;
+        elev.targetX = doorX;
+        elev.state = "walking";
+        elev.walkIdx = 0;
+        elev.walkAcc = 0;
+      }
+    } else {
+      elev.y += elev.dir * step;
+    }
+    elevPosition();
+  } else if (elev.state === "walking") {
+    const dist = Math.abs(elev.targetX - elev.gumX);
+    const step = GUM_WALK_SPEED * dt;
+    if (dist <= step) {
+      elev.gumX = elev.targetX;
+      elev.state = "idle";
+      const atHome = Math.abs(elev.gumX - GUM_HOME_X) < 2;
+      if (atHome) elev.facingRight = false;
+      elevSetGum(atHome ? "arrive" : "atDoor");
+      // Pending door: fire action now that Gum is at the door
+      if (elev._pendingDoor && !atHome) {
+        const pd = elev._pendingDoor;
+        elev._pendingDoor = null;
+        activeRoomId = pd.id;
+        handleDoorAction(pd.id);
+      }
+      // Pending dialog: show vacant dialog now that Gum is at the door
+      if (elev._pendingDialog && !atHome) {
+        elev._pendingDialog = null;
+        showVacantRoomDialog();
+      }
+      if (elev._queuedFloor != null && atHome) {
+        const qf = elev._queuedFloor;
+        elev._queuedFloor = null;
+        elevGoTo(qf);
+      }
+    } else {
+      const walkDir = elev.targetX > elev.gumX ? 1 : -1;
+      elev.facingRight = walkDir > 0;
+      elev.gumX = walkDir > 0
+        ? Math.min(elev.gumX + step, elev.targetX)
+        : Math.max(elev.gumX - step, elev.targetX);
+      elev.walkAcc += dt * 1000;
+      if (elev.walkAcc >= ELEV_FRAME_MS) {
+        elev.walkAcc -= ELEV_FRAME_MS;
+        elev.walkIdx = (elev.walkIdx + 1) % 4;
+      }
+      elevSetGum(`walk0${elev.walkIdx + 1}`);
+    }
+    elevPosition();
+  }
+
+  requestAnimationFrame(elevTick);
+}
+
+function elevScrollUpdate() {
+  if (!elev.scrollDriven || !treeWorld) return;
+  const tw = treeBuildLayer.querySelector(".tree-trunk-wrap");
+  if (!tw) return;
+  const tr = tw.getBoundingClientRect();
+  const rel = (window.innerHeight / 2 - tr.top) / tr.height;
+  const f = Math.round((1 - rel) * (elevTotalFloors() - 1));
+  const clamped = Math.max(0, Math.min(elevTotalFloors() - 1, f));
+  const effective = elev.state === "riding" ? elev._targetFloor : elev.floor;
+  if (clamped !== effective) {
+    elev._targetFloor = clamped;
+    elev.targetY = elevFloorY(clamped);
+    elev.state = "riding";
+    elev.dir = elev.targetY > elev.y ? 1 : -1;
+    elevSetGum(elev.dir < 0 ? "eyesUp" : "eyesDown");
+  }
+}
+
+// Walk Gum to a specific door, then fire the action on arrival
+function elevVisitDoor(room) {
+  if (!room) return;
+  const floor = slotToFloor(room.segment, room.slot);
+  const doorX = SLOT_CONFIG[room.slot].xPixel;
+
+  elev.scrollDriven = false;
+  elev._pendingDoor = room;
+
+  // Already at the door? Fire immediately.
+  if (elev.floor === floor && Math.abs(elev.gumX - doorX) < 2 && elev.state === "idle") {
+    elevSetGum("atDoor");
+    activeRoomId = room.id;
+    handleDoorAction(room.id);
+    elev._pendingDoor = null;
+    return;
+  }
+
+  // Need to ride to the floor first?
+  if (elev.floor !== floor && elev.state !== "riding") {
+    // Walk home first if away, then ride, then walk to door
+    elev._queuedFloor = floor;
+    if (Math.abs(elev.gumX - GUM_HOME_X) > 2) {
+      elev.targetX = GUM_HOME_X;
+      elev.state = "walking";
+      elev.walkIdx = 0;
+      elev.walkAcc = 0;
+    } else {
+      elevGoTo(floor);
+    }
+    return;
+  }
+
+  // On the right floor — walk to the door
+  if (elev.state !== "riding") {
+    elev.targetX = doorX;
+    elev.state = "walking";
+    elev.walkIdx = 0;
+    elev.walkAcc = 0;
+  }
+}
+
+// Walk Gum to a vacant door, then show dialog instead of handleDoorAction
+function elevVisitDoorThenDialog(room) {
+  if (!room) return;
+  const floor = slotToFloor(room.segment, room.slot);
+  const doorX = SLOT_CONFIG[room.slot].xPixel;
+
+  elev.scrollDriven = false;
+  elev._pendingDoor = null;
+  elev._pendingDialog = room;
+
+  // Already at the door?
+  if (elev.floor === floor && Math.abs(elev.gumX - doorX) < 2 && elev.state === "idle") {
+    elevSetGum("atDoor");
+    elev._pendingDialog = null;
+    showVacantRoomDialog();
+    return;
+  }
+
+  // Need to ride first?
+  if (elev.floor !== floor && elev.state !== "riding") {
+    elev._queuedFloor = floor;
+    if (Math.abs(elev.gumX - GUM_HOME_X) > 2) {
+      elev.targetX = GUM_HOME_X;
+      elev.state = "walking";
+      elev.walkIdx = 0;
+      elev.walkAcc = 0;
+    } else {
+      elevGoTo(floor);
+    }
+    return;
+  }
+
+  // On the right floor — walk to the door
+  if (elev.state !== "riding") {
+    elev.targetX = doorX;
+    elev.state = "walking";
+    elev.walkIdx = 0;
+    elev.walkAcc = 0;
+  }
+}
+
+function elevActivateDoor() {
+  const room = elevNearestDoor(elev.floor, elev.gumX);
+  if (!room) return;
+  if (room.status === "vacant" || room.status === "unclaimed") {
+    showVacantRoomDialog();
+    return;
+  }
+  const rules = cachedManifest?.treefort?.guestRules;
+  if (rules) {
+    const lc = guestLifecycle(room, rules);
+    if (lc && lc.phase === "expired") return;
+  }
+  activeRoomId = room.id;
+  handleDoorAction(room.id);
+}
+
+// ── Gum Dialog ──
+
+const gumDialog = document.getElementById("gum-dialog");
+const gumDialogPortrait = document.getElementById("gum-dialog-portrait");
+const gumDialogText = document.getElementById("gum-dialog-text");
+const gumDialogActions = document.getElementById("gum-dialog-actions");
+
+const GUM_HAPPY = [
+  "./assets/characters/gumDialA01.png",
+  "./assets/characters/gumDialA02.png",
+];
+const GUM_SAD = [
+  "./assets/characters/gumDialB01.png",
+  "./assets/characters/gumDialB02.png",
+];
+
+// Preload dialog portraits
+[...GUM_HAPPY, ...GUM_SAD].forEach(src => { new Image().src = src; });
+
+let _gumDialogTimer = null;
+
+function showGumDialog({ frames, text, actions }) {
+  gumDialogText.textContent = text;
+  gumDialogActions.replaceChildren();
+
+  actions.forEach(({ label, onClick }) => {
+    const btn = document.createElement("button");
+    btn.className = "gum-dialog__btn";
+    btn.type = "button";
+    btn.textContent = label;
+    btn.addEventListener("click", onClick);
+    gumDialogActions.appendChild(btn);
+  });
+
+  // Start 2-frame talking animation
+  let frameIdx = 0;
+  gumDialogPortrait.src = frames[0];
+  clearInterval(_gumDialogTimer);
+  _gumDialogTimer = setInterval(() => {
+    frameIdx = (frameIdx + 1) % frames.length;
+    gumDialogPortrait.src = frames[frameIdx];
+  }, 260);
+
+  gumDialog.classList.remove("hidden");
+}
+
+function hideGumDialog() {
+  gumDialog.classList.add("hidden");
+  clearInterval(_gumDialogTimer);
+  _gumDialogTimer = null;
+}
+
+// Close on backdrop click
+gumDialog.querySelector(".gum-dialog__backdrop").addEventListener("click", hideGumDialog);
+
+function showVacantRoomDialog() {
+  showGumDialog({
+    frames: GUM_SAD,
+    text: DIALOG["hub-vacant-1"]?.text || "This room is vacant.",
+    actions: [{
+      label: DIALOG["hub-vacant-1"]?.actions?.[0] || "Where's my room?",
+      onClick: () => {
+        showGumDialog({
+          frames: GUM_HAPPY,
+          text: DIALOG["hub-vacant-2"]?.text || "Let's go find it!",
+          actions: [{
+            label: DIALOG["hub-vacant-2"]?.actions?.[0] || "Okay",
+            onClick: hideGumDialog,
+          }],
+        });
+      },
+    }],
+  });
+}
+
+// ── Input handlers ──
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    if (!gumDialog.classList.contains("hidden")) { hideGumDialog(); return; }
+    if (!modal.classList.contains("hidden")) { hideModal(); return; }
+  }
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    elev.scrollDriven = false;
+    const base = elev.state === "riding" ? elev._targetFloor : elev.floor;
+    elevGoTo(base + 1);
+  }
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    elev.scrollDriven = false;
+    const base = elev.state === "riding" ? elev._targetFloor : elev.floor;
+    elevGoTo(base - 1);
+  }
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    elev.scrollDriven = false;
+    elevWalk(-1);
+  }
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    elev.scrollDriven = false;
+    elevWalk(1);
+  }
+  if (event.key === "Enter" && modal.classList.contains("hidden")) {
+    event.preventDefault();
+    elevActivateDoor();
+  }
+});
+
+function parseReturnDoor() {
+  // Priority 1: explicit #from= hash (set by room back buttons)
+  const hash = window.location.hash;
+  if (hash.startsWith("#from=")) {
+    const id = decodeURIComponent(hash.slice(6));
+    const room = roomById.get(id);
+    if (room) return room;
+  }
+  // Priority 2: sessionStorage (set before navigating to any room)
+  const lastDoor = sessionStorage.getItem("treefort-last-door");
+  if (lastDoor) {
+    sessionStorage.removeItem("treefort-last-door");
+    return roomById.get(lastDoor) || null;
+  }
+  return null;
+}
+
+function returnToDoor(room) {
+  const floor = slotToFloor(room.segment, room.slot);
+  const doorX = SLOT_CONFIG[room.slot].xPixel;
+
+  // Position Gum at the door
+  elev.floor = floor;
+  elev._targetFloor = floor;
+  elev.y = elev.targetY = elevFloorY(floor);
+  elev.gumX = doorX;
+  elev.targetX = doorX;
+  elev.state = "idle";
+  elev.scrollDriven = false;
+  elev._lastPrefix = null;
+  elevSetGum("atDoor");
+  elevPosition();
+
+  // Scroll so the door is centered on screen.
+  // Tree is scaled 2× from bottom center, anchored at bottom of tree-world.
+  // Distance from bottom of treeBuildLayer (pre-scale):
+  const crown = treeBuildLayer.querySelector(".tree-crown");
+  const crownH = crown ? crown.offsetHeight : 0;
+  const doorFromTop = crownH + elev.y;
+  const doorFromBottom = treeBuildLayer.scrollHeight - doorFromTop;
+  // After 2× scale, distance from bottom doubles
+  const scaledFromBottom = doorFromBottom * TREE_SCALE;
+  // The tree bottom aligns with the bottom of tree-world
+  const worldH = treeWorld.offsetHeight;
+  const doorInWorld = worldH - scaledFromBottom;
+  // Scroll so that point is at the vertical center of the viewport
+  const scrollTarget = Math.max(0, treeWorld.offsetTop + doorInWorld - window.innerHeight / 2);
+  window.scrollTo(0, scrollTarget);
+}
+
+// ── Init ──
+
 async function init() {
-  renderTreeMessage("Loading doors...");
+  try {
+    const dlgResp = await fetch("./room/data/dialog.json");
+    if (dlgResp.ok) DIALOG = await dlgResp.json();
+  } catch {}
+
+  renderTreeMessage(DIALOG["hub-loading"]?.text || "Loading doors...");
 
   try {
     const manifest = await loadTreefort();
     cachedManifest = manifest;
+
+    // Resident / solo instances skip the tree — go straight to the room
+    if (manifest.instance === "resident" || manifest.instance === "solo") {
+      window.location.replace("./room/");
+      return;
+    }
+
+    segmentCount = manifest.doors.reduce((max, d) => Math.max(max, (d.segment ?? 0) + 1), 0);
     renderSky();
     renderTree();
     applyTreefortCopy(manifest.treefort);
     await waitForTreeImages();
     sizeWorld();
-    positionDoorField();
     renderDoors(manifest.doors, manifest.treefort.guestRules);
-    tickCountdowns();
-    requestAnimationFrame(() => requestAnimationFrame(scrollToWorldBase));
+    renderStickerBooks(manifest.stickerBooks);
+
+    // Check if returning from a room
+    const fromRoom = parseReturnDoor();
+    if (fromRoom) {
+      returnToDoor(fromRoom);
+      if (window.location.hash) history.replaceState(null, "", window.location.pathname);
+    } else {
+      scrollToWorldBase();
+    }
+
+    requestAnimationFrame(elevTick);
   } catch (error) {
     console.error(error);
-    renderTreeMessage("Treefort data failed to load. Serve this folder over HTTP.");
+    renderTreeMessage(DIALOG["hub-error"]?.text || "Treefort data failed to load. Serve this folder over HTTP.");
   }
 }
 
 window.addEventListener("resize", () => {
   scheduleSkyRender();
   sizeWorld();
-  positionDoorField();
 });
 
-window.addEventListener("scroll", applyParallax, { passive: true });
+window.addEventListener("scroll", () => {
+  applyParallax();
+  // Don't hijack keyboard-initiated rides
+  if (!elev.scrollDriven && elev.state === "riding") return;
+  elev.scrollDriven = true;
+
+  // If Gum is away from elevator, walk back first
+  if (Math.abs(elev.gumX - GUM_HOME_X) > 2) {
+    // Calculate and queue the scroll target floor
+    const tw = treeBuildLayer.querySelector(".tree-trunk-wrap");
+    if (tw) {
+      const tr = tw.getBoundingClientRect();
+      const rel = (window.innerHeight / 2 - tr.top) / tr.height;
+      const f = Math.round((1 - rel) * (elevTotalFloors() - 1));
+      elev._queuedFloor = Math.max(0, Math.min(elevTotalFloors() - 1, f));
+    }
+    elev.targetX = GUM_HOME_X;
+    if (elev.state !== "walking") {
+      elev.state = "walking";
+      elev.walkIdx = 0;
+      elev.walkAcc = 0;
+    }
+    return;
+  }
+
+  // Gum is in the elevator — scroll drives normally
+  elev._queuedFloor = null;
+  elev.facingRight = false;
+  if (elev.state === "walking") {
+    elev.state = "idle";
+    elevSetGum("arrive");
+  }
+  elevScrollUpdate();
+}, { passive: true });
 
 primeWorldStartPosition();
 init();

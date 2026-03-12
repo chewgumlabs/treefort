@@ -1,6 +1,7 @@
 {
   "schema": "treefort-semantic-room",
   "schemaVersion": 1,
+  "instance": "solo",
   "roomId": "my-room",
   "roomEngine": "semantic-scene-v2",
   "owner": {
@@ -161,70 +162,70 @@
           "labelId": "floor",
           "label": "Floor",
           "minCells": 64,
-          "hint": "...a room needs some floor if anyone is going to stand in it."
+          "hint": "... A floor is a good thing. Can't get much lower than the floor."
         },
         {
           "id": "main-bed",
           "labelId": "bed",
           "label": "Bed",
           "minCells": 24,
-          "hint": "...it needs a bed before anybody can sleep in here."
+          "hint": "The Tree needs to know where you lay your head at night."
         },
         {
           "id": "main-rug",
           "labelId": "rug",
           "label": "Rug",
           "minCells": 18,
-          "hint": "...something soft on the floor would help the room settle down."
+          "hint": "A rug. For housing little dust bunnies."
         },
         {
           "id": "main-desk",
           "labelId": "desk",
           "label": "Desk",
           "minCells": 16,
-          "hint": "...a desk would give the room somewhere to think."
+          "hint": "A Desk. To sit and stare. No wait that's what a chair is for."
         },
         {
           "id": "main-chair",
           "labelId": "chair",
           "label": "Chair",
           "minCells": 12,
-          "hint": "...a desk without a chair feels a little rude."
+          "hint": "Four Legs Good. Six Legs Better. "
         },
         {
           "id": "main-lamp",
           "labelId": "lamp",
           "label": "Lamp",
           "minCells": 8,
-          "hint": "...hmm... the new room looks nice but it could use a lamp maybe."
+          "hint": "Electricity in The Living Tree? It's that or an open flame."
         },
         {
           "id": "main-window",
           "labelId": "window",
           "label": "Window",
           "minCells": 16,
-          "hint": "...a window would make the room feel less boxed in."
+          "hint": "You carved it yourself. Are you proud?"
         },
         {
           "id": "main-shelf",
           "labelId": "shelf",
           "label": "Shelf",
           "minCells": 12,
-          "hint": "...somewhere high up for treasures would help."
+          "hint": "Any straight line will do. But only a straight line. Cause stuff would slide off."
         },
         {
           "id": "main-clock",
           "labelId": "clock",
           "label": "Clock",
           "minCells": 8,
-          "hint": "...the room ought to know what time it is."
+          "hint": "Hey Kids. Guess what Time it is...."
         },
         {
           "id": "main-poster-secret",
           "labelId": "poster-secret",
           "label": "Poster?",
           "minCells": 18,
-          "hint": "...something strange on the wall might hide a passage."
+          "hint": "Gum left. Forgot to mention the Sticker Book."
         }
       ],
       "regions": [],
@@ -237,7 +238,7 @@
       "description": "A final tucked-away room that sits outside the normal secret-room graph.",
       "revealState": "undrawn",
       "sceneArtAssetId": null,
-      "placeholderPrompt": "Draw the bonus void room in IcyAnimation to reveal it.",
+      "placeholderPrompt": "Draw in IcyAnimation to reveal.",
       "fillPatches": [],
       "surfacePatches": [],
       "scoreGoals": [],

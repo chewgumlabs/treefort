@@ -34,7 +34,7 @@ All three are JSON-based, same underlying structure as `.icy`/`.room` files with
 ### Phase 2 — Draw the Key (IcyAnimation)
 - Kid opens `.Parchment` in Icy
 - Icy detects `questPhase: "awaiting-key"` and enters **KEY mode**
-- Canvas is small (key-sized, not room-sized — maybe 64x64 or 48x48?)
+- Canvas is 64x64 (set by Parchment instruction file)
 - Mode label at top says "KEY"
 - **Chew dialog**: "Hey, you better draw a good key cause you only get one chance and it's forever. Wait. Did Gum talk to you? Did he say anything about me? I bet he did."
 - Kid draws their key

@@ -1,3 +1,13 @@
+@font-face {
+  font-family: "OrangeKid";
+  src:
+    url("./room/assets/fonts/orange-kid/OrangeKid.woff2") format("woff2"),
+    url("./room/assets/fonts/orange-kid/OrangeKid.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --ink: #0d0b10;
   --accent: #ff8924;
@@ -107,6 +117,17 @@ input {
   z-index: 1;
 }
 
+.tree-trunk-doors {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  z-index: 4;
+  pointer-events: none;
+}
+
 .tree-trunk-front {
   z-index: 3;
 }
@@ -115,11 +136,29 @@ input {
   flex: 0 0 auto;
 }
 
+.door-segment-wrap {
+  position: relative;
+  width: 1024px;
+  height: 240px;
+  flex: 0 0 auto;
+}
+
+.door-sprite {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1024px;
+  height: 240px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
 .tree-base-wrap {
   position: relative;
   width: 1024px;
   height: 964px;
-  margin-top: -2px;
+  margin-top: -238px;
 }
 
 .tree-base-layer {
@@ -132,7 +171,248 @@ input {
 .tree-base-layer:nth-child(2) { z-index: 2; }
 .tree-base-layer:nth-child(3) { z-index: 3; }
 
-/* ── Floors ── */
+/* ── Sticker Books on grass ── */
+
+.tree-book-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.sbook-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.sbook-icon {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+
+.sbook-label {
+  font-family: "Press Start 2P", monospace;
+  font-size: 6px;
+  color: #ffe8c0;
+  background: #2a3a1a;
+  padding: 2px 4px;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
+}
+
+.sbook-slot:hover .sbook-label {
+  opacity: 1;
+}
+
+/* ── Sticker Book Viewer (hub) ── */
+
+.sbook-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sbook-viewer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 16, 11, 0.72);
+  cursor: pointer;
+}
+
+.sbook-viewer__book {
+  position: relative;
+  background: #d7e49a;
+  border: 3px solid #3a3a28;
+  box-shadow: 4px 4px 0 #3a3a28;
+  width: 320px;
+  min-height: 400px;
+  image-rendering: pixelated;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sbook-viewer__x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid #799240;
+  background: #d7e49a;
+  color: #799240;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.sbook-viewer__x:hover {
+  background: #799240;
+  color: #d7e49a;
+}
+
+.sbook-viewer__owner {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #3a3a28;
+  margin: 12px 0 0;
+}
+
+.sbook-viewer__page {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  image-rendering: pixelated;
+}
+
+.sbook-viewer__page img {
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.sbook-viewer__caption {
+  margin: 2px 0 0;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  color: #799240;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sbook-viewer__empty {
+  color: #799240;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.sbook-viewer__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 12px;
+}
+
+.sbook-viewer__arrow {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid #3a3a28;
+  background: #b5c56e;
+  box-shadow: 1px 1px 0 #3a3a28;
+  font-family: "Courier New", monospace;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sbook-viewer__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.sbook-viewer__pagenum {
+  margin: 0;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  color: #3a3a28;
+  text-transform: uppercase;
+  min-width: 50px;
+  text-align: center;
+}
+
+.sbook-slot:hover .sbook-icon {
+  filter: brightness(1.3);
+}
+
+/* ── Elevator ── */
+
+.elevator-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1024px;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.elevator-rope {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1024px;
+  background-image: url("./assets/tree/elevator/elevator_ropeExtension.png");
+  background-size: 1024px 240px;
+  background-repeat: repeat-y;
+  background-position: top left;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.elevator-sprite {
+  position: absolute;
+  left: 0;
+  width: 1024px;
+  height: 240px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
+.elevator-box-ul { z-index: 1; }
+.elevator-box-ol { z-index: 3; }
+
+.elevator-gum {
+  position: absolute;
+  width: 27px;
+  height: 37px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── Doors ── */
 
 .door-field {
   position: absolute;
@@ -140,27 +420,19 @@ input {
   pointer-events: none;
 }
 
-.floor-platform {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: rgba(120, 80, 40, 0.7);
-  box-shadow: 0 1px 0 rgba(255, 200, 120, 0.25);
-  pointer-events: none;
-}
-
 .door {
   position: absolute;
-  z-index: 2;
-  width: 56px;
-  height: 80px;
-  border: 3px solid var(--ink);
-  background: linear-gradient(180deg, #ffd86f, #f68b35 60%, #b44e07);
+  border: none;
+  background: transparent;
   cursor: pointer;
-  transform: translate(-50%, -100%);
   pointer-events: auto;
   padding: 0;
+  z-index: 2;
+}
+
+.door:disabled {
+  cursor: default;
+  pointer-events: none;
 }
 
 .door:focus-visible {
@@ -168,88 +440,32 @@ input {
   outline-offset: 2px;
 }
 
-.door.is-selected {
-  box-shadow: 0 0 0 3px #fff49e;
-}
-
-.door-knob {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  background: var(--ink);
-  border-radius: 50%;
-  transform: translateY(-50%);
-}
-
 .door-label {
   position: absolute;
   left: 50%;
-  top: calc(100% + 4px);
+  bottom: calc(100% + 4px);
   width: max-content;
-  max-width: 92px;
-  padding: 2px 4px;
-  background: rgba(0, 0, 0, 0.6);
+  max-width: 140px;
+  padding: 0;
+  background: none;
   color: rgba(255, 245, 200, 0.9);
-  transform: translateX(-50%);
-  font-size: 0.5rem;
-  font-weight: 700;
+  transform: translateX(-50%) scale(0.5);
+  transform-origin: bottom center;
+  pointer-events: none;
+  font-family: "OrangeKid", "Courier New", monospace;
+  font-size: 1rem;
+  font-weight: normal;
   line-height: 1.15;
+  text-align: center;
   text-transform: uppercase;
+  text-shadow:
+    1px 1px 0 rgba(0, 0, 0, 0.7),
+    -1px -1px 0 rgba(0, 0, 0, 0.4),
+    0 0 4px rgba(0, 0, 0, 0.5);
 }
 
-.door[data-state="lock"] {
-  background: linear-gradient(180deg, #d4dae3, #8d93a7 60%, #5a6172);
-}
-
-.door[data-state="knock"] {
-  background: linear-gradient(180deg, #ffd888, #ef7f46 60%, #af3915);
-}
-
-.door[data-state="discord"] {
-  background: linear-gradient(180deg, #bfd1ff, #6488ed 60%, #364ca6);
-}
-
-.door[data-state="stalk"] {
-  background: linear-gradient(180deg, #fff06c, #ffbb30 60%, #ef7e00);
-}
-
-.door[data-state="vacant"] {
-  background: linear-gradient(180deg, #3a3530, #2a2520 60%, #1a1510);
-  border-color: #4a4540;
-  cursor: default;
-  opacity: 0.5;
-}
-
-.door[data-state="expired"] {
-  background: linear-gradient(180deg, #5a4540, #3a2520 60%, #2a1510);
-  border-color: #6a5550;
-  cursor: default;
-  opacity: 0.4;
-}
-
-.door-countdown {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 1px 4px;
-  background: #fff59d;
-  border: 2px solid var(--ink);
-  font-size: 0.42rem;
-  font-weight: 700;
-  white-space: nowrap;
-  text-transform: uppercase;
-}
-
-.door-countdown--urgent {
-  background: #ffab91;
-}
-
-.door-countdown--final {
-  background: #ef5350;
-  color: #fff;
+.door-label--vacant {
+  color: rgba(255, 245, 200, 0.45);
 }
 
 .tree-message {
@@ -267,33 +483,6 @@ input {
   text-align: center;
   font-size: 0.7rem;
   pointer-events: auto;
-}
-
-/* ── Hub footer ── */
-
-.hub-footer {
-  position: absolute;
-  bottom: 12px;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  text-align: center;
-  pointer-events: none;
-}
-
-.hub-title {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: rgba(255, 245, 200, 0.5);
-}
-
-.hub-lede {
-  margin: 3px 0 0;
-  font-size: 0.58rem;
-  color: rgba(255, 245, 200, 0.3);
 }
 
 /* ── Modal ── */
@@ -427,6 +616,103 @@ input {
   font-size: 0.62rem;
   line-height: 1.28;
   color: rgba(11, 16, 11, 0.76);
+}
+
+/* ── Gum Dialog ── */
+
+.gum-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.gum-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 16, 11, 0.5);
+}
+
+.gum-dialog__box {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  width: min(360px, calc(100vw - 24px));
+  min-height: 180px;
+  padding: 10px 12px 10px 8px;
+  border: 3px solid var(--ink);
+  background: #d7e49a;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.gum-dialog__portrait {
+  flex-shrink: 0;
+  align-self: flex-start;
+  width: 81px;
+  height: 108px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  margin-top: -6px;
+  margin-left: -4px;
+}
+
+.gum-dialog__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+}
+
+.gum-dialog__speaker {
+  margin: 0 0 6px;
+  font-family: "OrangeKid", "Courier New", monospace;
+  font-size: 20px;
+  font-weight: normal;
+  text-transform: uppercase;
+  color: rgba(11, 16, 11, 0.72);
+}
+
+.gum-dialog__text {
+  margin: 0 0 14px;
+  font-family: "OrangeKid", "Courier New", monospace;
+  font-size: 18px;
+  font-weight: normal;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.gum-dialog__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.gum-dialog__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 2px 14px 4px;
+  border: 2px solid var(--ink);
+  background: #e0b54f;
+  color: #1d1206;
+  font-family: "OrangeKid", "Courier New", monospace;
+  font-size: 16px;
+  font-weight: normal;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.gum-dialog__btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
 }
 
 /* ── Utility ── */

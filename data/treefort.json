@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "instance": "hub",
   "treefort": {
     "title": "The giant tree with everyone's door on it.",
     "lede": "Each door represents a kid's own room. The tree is the shared hub.",
@@ -12,78 +13,35 @@
       "maxSizeBytes": 52428800
     }
   },
+  "stickerBooks": [
+    { "name": "Gum", "guestId": "gum", "slot": 4 }
+  ],
   "doors": [
+    { "id": "guest-001", "type": "guest", "status": "vacant", "segment": 0, "slot": "a" },
+    { "id": "guest-002", "type": "guest", "status": "vacant", "segment": 0, "slot": "b" },
     {
-      "id": "guest-001",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 0
-    },
-    {
-      "id": "guest-002",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 0
-    },
-    {
-      "id": "guest-003",
-      "type": "guest",
-      "status": "occupied",
-      "floor": 0,
-      "name": "shanecurry's Room",
-      "moveInDate": "2026-03-11",
+      "id": "guest-003", "type": "guest", "status": "occupied", "segment": 0, "slot": "c",
+      "name": "shanecurry's Room", "moveInDate": "2026-03-11",
       "discordUserId": "1028469253139075152",
       "access": {
-        "mode": "knock",
-        "hint": "Ask shanecurry!",
+        "mode": "knock", "hint": "Ask shanecurry!",
         "passphraseHash": "d8a243c28b2a58b280bb8604e1ac93185b2e373db03d4ceaf739059f67a2382a",
         "encryptedHref": "oc2DXejm8o+b+F0Js7YUvRULg3zbkt60ArJ8kVv7bH4pn1ML7VKuvHcGD++XNknpK3Dez3K2NWDnTN9eCvv/BkU4zQ=="
       }
     },
+    { "id": "guest-004", "type": "guest", "status": "vacant", "segment": 0, "slot": "d" },
+    { "id": "guest-005", "type": "guest", "status": "vacant", "segment": 1, "slot": "a" },
+    { "id": "guest-006", "type": "guest", "status": "vacant", "segment": 1, "slot": "b" },
+    { "id": "guest-007", "type": "guest", "status": "vacant", "segment": 1, "slot": "c" },
+    { "id": "guest-008", "type": "guest", "status": "vacant", "segment": 1, "slot": "d" },
+    { "id": "guest-009", "type": "guest", "status": "vacant", "segment": 2, "slot": "a" },
+    { "id": "guest-010", "type": "guest", "status": "vacant", "segment": 2, "slot": "b" },
+    { "id": "guest-011", "type": "guest", "status": "vacant", "segment": 2, "slot": "c" },
+    { "id": "guest-012", "type": "guest", "status": "vacant", "segment": 2, "slot": "d" },
     {
-      "id": "guest-004",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 1
-    },
-    {
-      "id": "guest-005",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 1
-    },
-    {
-      "id": "guest-006",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 1
-    },
-    {
-      "id": "guest-007",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 2
-    },
-    {
-      "id": "guest-008",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 2
-    },
-    {
-      "id": "guest-009",
-      "type": "guest",
-      "status": "vacant",
-      "floor": 2
-    },
-    {
-      "id": "my-room",
-      "type": "permanent",
-      "name": "My Room",
-      "floor": 4,
-      "access": {
-        "mode": "stalk"
-      },
+      "id": "my-room", "type": "permanent", "name": "My Room",
+      "segment": 3, "slot": "a",
+      "access": { "mode": "stalk" },
       "href": "./room/"
     }
   ]

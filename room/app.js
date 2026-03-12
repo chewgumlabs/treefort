@@ -72,10 +72,22 @@ const LOCAL_DRAFT_PREFIX = "treefort-room-draft-v4:";
 const ICY_LAYER_COLORS = ["#17191d", "#ef8f50", "#4d9fe7", "#2db8a1", "#de6a8b", "#f5c74e"];
 const ROOM_META_SCHEMA = "treefort-room-hidden-meta";
 const ROOM_META_SCHEMA_VERSION = 1;
-const ROOM_BACKGROUND_NOTICE = "ROOM COLORS ARE NOT EDITABLE";
-const ROOM_WARNING =
+const ROOM_BACKGROUND_NOTICE_DEFAULT = "ROOM COLORS ARE NOT EDITABLE";
+const ROOM_WARNING_DEFAULT =
   "Your tags will be saved, and your colors will be shown on the background side in IcyAnimation for reference. Changes to that reference do not carry back into the bedroom.";
-const SUPPORT_MESSAGE = "... Support lines let a pet know where it can stand and walk. If one arrives...";
+const SUPPORT_MESSAGE_DEFAULT = "... Support lines let a pet know where it can stand and walk. If one arrives...";
+let DIALOG = {};
+function dlg(id) { return DIALOG[id] || {}; }
+function dlgText(id, vars) {
+  let t = dlg(id).text || "";
+  if (!vars) return t;
+  let gs = vars._glitchSeed || 1;
+  t = t.replace(/\{glitch\}/g, () => glitchText(gs++));
+  for (const [k, v] of Object.entries(vars)) {
+    if (!k.startsWith("_")) t = t.replaceAll("{" + k + "}", String(v));
+  }
+  return t;
+}
 const SCENE_OVERRIDE_STORAGE_PREFIX = "treefort-room-scene-v1:";
 const PAINT_SWATCHES = [
   { id: "p01", label: "P01", hex: "#3f4328" },
@@ -212,6 +224,87 @@ const VALID_OBJECT_LABEL_IDS = new Set(OBJECT_LABEL_BRUSHES.map((brush) => brush
 const VALID_SUPPORT_LABEL_IDS = new Set(["solid"]);
 
 let manifest = null;
+let guestParam = null;
+let isResident = false;
+let isSolo = false;
+let isGuestReadonly = false;
+
+const RESIDENT_OVERLAY_COLORS = [
+  "rgba(69, 176, 98, 0.62)",
+  "rgba(229, 112, 162, 0.62)",
+  "rgba(197, 124, 54, 0.62)",
+  "rgba(92, 172, 255, 0.62)",
+  "rgba(255, 207, 78, 0.66)",
+  "rgba(152, 102, 67, 0.62)",
+  "rgba(84, 198, 209, 0.62)",
+  "rgba(140, 98, 224, 0.62)",
+  "rgba(211, 82, 89, 0.62)",
+  "rgba(128, 200, 140, 0.62)",
+];
+
+const RESIDENT_LABELS_KEY = "treefort-resident-labels";
+
+function loadResidentLabels(spaceId) {
+  const raw = window.localStorage.getItem(`${RESIDENT_LABELS_KEY}:${spaceId}`);
+  if (!raw) return {};
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+
+function saveResidentLabels(spaceId, labels) {
+  window.localStorage.setItem(`${RESIDENT_LABELS_KEY}:${spaceId}`, JSON.stringify(labels));
+}
+
+const SOLO_STATE_KEY = "treefort-solo-state";
+
+function persistSoloManifest() {
+  if (!isSolo && !isResident) return;
+  const state = {
+    completedWaves: manifest.completedWaves || [],
+    questPhase: manifest.questPhase,
+    stickerBookOpened: manifest.stickerBookOpened || false,
+    secretGraduationShown: manifest.secretGraduationShown || false,
+    captureWarningShown: manifest.captureWarningShown || false,
+    keyArt: manifest.keyArt || null,
+    stickers: manifest.stickers || [],
+  };
+  localStorage.setItem(`${SOLO_STATE_KEY}:${manifest.roomId}`, JSON.stringify(state));
+}
+
+function loadSoloManifest() {
+  const raw = localStorage.getItem(`${SOLO_STATE_KEY}:${manifest.roomId}`);
+  if (!raw) return;
+  try {
+    const state = JSON.parse(raw);
+    if (state.completedWaves) manifest.completedWaves = state.completedWaves;
+    if (state.questPhase !== undefined) manifest.questPhase = state.questPhase;
+    if (state.stickerBookOpened) manifest.stickerBookOpened = true;
+    if (state.secretGraduationShown) manifest.secretGraduationShown = true;
+    if (state.captureWarningShown) manifest.captureWarningShown = true;
+    if (state.keyArt) manifest.keyArt = state.keyArt;
+    if (state.stickers?.length) manifest.stickers = state.stickers;
+  } catch { /* ignore corrupt state */ }
+}
+
+function renameResidentLabel(space, goalId, newLabel) {
+  const goal = space.scoreGoals?.find((g) => g.id === goalId);
+  if (!goal) return;
+  goal.label = newLabel;
+  const labels = loadResidentLabels(space.id);
+  labels[goalId] = newLabel;
+  saveResidentLabels(space.id, labels);
+  // Re-register brush with new label
+  const idx = (space.scoreGoals || []).indexOf(goal);
+  const overlay = RESIDENT_OVERLAY_COLORS[idx % RESIDENT_OVERLAY_COLORS.length];
+  labelBrushById.set(goal.labelId, {
+    id: goal.labelId,
+    label: newLabel || `Slot ${idx + 1}`,
+    key: newLabel || `Slot ${idx + 1}`,
+    overlay,
+  });
+  buildLabelBrushes();
+  buildLabelKey();
+  drawLabelOverlay(space, getDraft(space));
+}
 let paletteById = new Map();
 let assetById = new Map();
 let spaceById = new Map();
@@ -294,6 +387,17 @@ function jumpToSpace(spaceId) {
   activeSpaceId = targetSpace.id;
   writeLocationSpaceId(activeSpaceId);
   renderActiveSpace();
+
+  // Graduation dialog on first visit to secret room
+  if (targetSpace.id === "secret" && manifest.questPhase === "decorating" && !secretGraduationShown) {
+    secretGraduationShown = true;
+    manifest.secretGraduationShown = true;
+    showDialog({
+      speaker: "Gum", frames: GUM_HAPPY,
+      text: dlg("quest-graduation").text || "You've done everything a guest can do.",
+      actions: [{ label: dlg("quest-graduation").actions?.[0] || "Wow", onClick: () => {} }],
+    });
+  }
 }
 
 function isBonusComplete() {
@@ -396,24 +500,24 @@ function resetStatus(space) {
     stageStatusDefault = `${space.title} is locked.`;
   } else if (space.revealState === "undrawn") {
     if (authorMode === "paint") {
-      stageStatusDefault = "Pick colors now. Import a room drawing before you paint the stage.";
+      stageStatusDefault = dlg("status-paint-undrawn").text || "Pick colors now. Import a room drawing before you paint the stage.";
     } else if (authorMode === "labels") {
-      stageStatusDefault = "Pick labels now. Import a room drawing before you tag the stage.";
+      stageStatusDefault = dlg("status-labels-undrawn").text || "Pick labels now. Import a room drawing before you tag the stage.";
     } else if (authorMode === "interactive") {
-      stageStatusDefault = "Import a room and label a few spots before you wire up interactions.";
+      stageStatusDefault = dlg("status-interactive-undrawn").text || "Import a room and label a few spots before you wire up interactions.";
     } else {
       stageStatusDefault = space.placeholderPrompt;
     }
   } else if (authorMode === "paint") {
-    stageStatusDefault = "Drag a color across the room.";
+    stageStatusDefault = dlg("status-paint").text || "Drag a color across the room.";
   } else if (authorMode === "labels") {
-    stageStatusDefault = "Paint floor, poster, opening, or prop zones like a collision map.";
+    stageStatusDefault = dlg("status-labels").text || "Paint floor, poster, opening, or prop zones like a collision map.";
   } else if (authorMode === "interactive") {
-    stageStatusDefault = "Pick a labeled thing, then decide what it does.";
+    stageStatusDefault = dlg("status-interactive").text || "Pick a labeled thing, then decide what it does.";
   } else if (space.portalBindings.length > 0) {
-    stageStatusDefault = "Click around the drawing to travel through the room.";
+    stageStatusDefault = dlg("status-portals").text || "Click around the drawing to travel through the room.";
   } else {
-    stageStatusDefault = "This room is quiet for now.";
+    stageStatusDefault = dlg("status-quiet").text || "This room is quiet for now.";
   }
   setStatus(stageStatusDefault);
 }
@@ -436,12 +540,12 @@ function getRegionMessage(region, options = {}) {
     return interaction.body;
   }
 
-  return "This spot is quiet right now.";
+  return dlg("status-spot-quiet").text || "This spot is quiet right now.";
 }
 
 function getSelectionMessage(space, draft) {
   if (authorMode === "labels" && activeLabelLayer === "support") {
-    return SUPPORT_MESSAGE;
+    return (dlg("const-support-msg").text || SUPPORT_MESSAGE_DEFAULT);
   }
 
   if (authorMode !== "interactive") {
@@ -799,10 +903,10 @@ function buildTreefortRoomMeta(space, draft) {
       timelineEditable: false,
       gifToolsEnabled: false,
       showBackgroundNotice: true,
-      backgroundNotice: ROOM_BACKGROUND_NOTICE,
+      backgroundNotice: (dlg("const-bg-notice").text || ROOM_BACKGROUND_NOTICE_DEFAULT),
     },
     reference: {
-      warning: ROOM_WARNING,
+      warning: (dlg("const-room-warning").text || ROOM_WARNING_DEFAULT),
       ignoreBackgroundEditsOnReimport: true,
     },
     preserve: {
@@ -1027,6 +1131,7 @@ function persistDraft(spaceId, draft) {
   }
 
   window.localStorage.setItem(draftStorageKey(spaceId), JSON.stringify(nextDraft));
+  markGuestDirty();
 }
 
 function getDraft(space) {
@@ -1536,7 +1641,7 @@ function evaluateSpace(space, draft) {
       earned += 1;
       if ((goal.wave || 1) === wave) currentWaveEarned += 1;
     } else if (!missingHint && (goal.wave || 1) === wave) {
-      missingHint = `${goal.hint || `...this room still needs ${goal.label.toLowerCase()}.`} (${count}/${goal.minCells})`;
+      missingHint = `${goal.hint || (dlg("critic-missing-fallback").text || "...this room still needs {label}.").replace("{label}", goal.label.toLowerCase())} (${count}/${goal.minCells})`;
     }
   }
 
@@ -1547,7 +1652,7 @@ function evaluateSpace(space, draft) {
   if (!total) {
     return {
       earned: 0, total: 0,
-      critic: "...draw the room, then teach it what everything is.",
+      critic: dlg("critic-no-goals").text || "...draw the room, then teach it what everything is.",
       secretRoomUnlocked: false, waveComplete: false, allComplete: false,
     };
   }
@@ -1555,7 +1660,7 @@ function evaluateSpace(space, draft) {
   if (allComplete) {
     return {
       earned, total: allGoals.length,
-      critic: "...the room knows every object now. secret room unlocked.",
+      critic: dlg("critic-all-complete").text || "...the room knows every object now. secret room unlocked.",
       secretRoomUnlocked: true, waveComplete: true, allComplete: true,
     };
   }
@@ -1563,8 +1668,8 @@ function evaluateSpace(space, draft) {
   return {
     earned, total,
     critic: waveComplete
-      ? "...wave complete! something is happening..."
-      : missingHint || "...keep teaching the room what things are.",
+      ? (dlg("critic-wave-complete").text || "...wave complete! something is happening...")
+      : missingHint || (dlg("critic-default").text || "...keep teaching the room what things are."),
     secretRoomUnlocked: false, waveComplete, allComplete: false,
   };
 }
@@ -1893,19 +1998,20 @@ function checkWaveAdvancement(space, evaluation) {
     if (space.id === "main") {
       showDialog({
         speaker: "Gum", frames: GUM_HAPPY,
-        text: `You did it! Every single thing in this room has a name. You've unlocked... something. Check the ? button.`,
-        actions: [{ label: "!!!", onClick: () => { _waveAdvancing = false; } }],
+        text: dlg("wave-main-complete").text || "You did it!",
+        actions: [{ label: dlg("wave-main-complete").actions?.[0] || "!!!", onClick: () => { _waveAdvancing = false; } }],
       });
     } else if (space.id === "bonus") {
       showDialog({
         speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-        text: `${glitchText(99)} ...y̷ou actually d1d it. the room is c̸omplete. ${glitchText(100)} go find your r̵eward. if there 1s one.`,
-        actions: [{ label: "...", onClick: () => { _waveAdvancing = false; } }],
+        text: dlgText("wave-bonus-complete", { _glitchSeed: 99 }),
+        actions: [{ label: dlg("wave-bonus-complete").actions?.[0] || "...", onClick: () => { _waveAdvancing = false; } }],
       });
     } else {
       _waveAdvancing = false;
     }
     saveGuestRoom();
+    persistSoloManifest();
     return;
   }
 
@@ -1915,31 +2021,24 @@ function checkWaveAdvancement(space, evaluation) {
 
   const nextWave = wave + 1;
   if (space.id === "main") {
-    const waveDialogs = {
-      2: `Hey, it's starting to look like a real room! But... a desk would be nice. And maybe a chair? And a lamp so you can read at night.`,
-      3: `Wow, this is cozy. But don't you want a window? And a shelf for your stuff? And a clock so you know when your stay is almost up.`,
-      4: `Hmm, this room is almost perfect. Almost TOO perfect. Maybe you should put up a poster? Just a thought...`,
-    };
+    const waveKey = `wave-main-${nextWave}`;
     showDialog({
       speaker: "Gum", frames: GUM_HAPPY,
-      text: waveDialogs[nextWave] || `Wave ${nextWave} unlocked! Keep going!`,
-      actions: [{ label: "On it!", onClick: () => { _waveAdvancing = false; buildLabelBrushes(); updateFeedback(getCurrentSpace()); } }],
+      text: dlg(waveKey).text || `Wave ${nextWave} unlocked! Keep going!`,
+      actions: [{ label: dlg(waveKey).actions?.[0] || "On it!", onClick: () => { _waveAdvancing = false; buildLabelBrushes(); updateFeedback(getCurrentSpace()); } }],
     });
   } else if (space.id === "bonus") {
-    const bonusDialogs = {
-      2: `${glitchText(3)} COLD. HOT. ${glitchText(4)}`,
-      3: `${glitchText(5)} LIGHT. DARK. ${glitchText(6)}`,
-      4: `${glitchText(7)} LOST. FOUND. ${glitchText(8)}`,
-    };
+    const bonusKey = `wave-bonus-${nextWave}`;
     showDialog({
       speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-      text: bonusDialogs[nextWave] || `${glitchText(nextWave * 10)} ...n̸ext.`,
-      actions: [{ label: "...okay", onClick: () => { _waveAdvancing = false; buildLabelBrushes(); updateFeedback(getCurrentSpace()); } }],
+      text: dlgText(bonusKey, { _glitchSeed: nextWave * 2 - 1 }) || `${glitchText(nextWave * 10)} ...n̸ext.`,
+      actions: [{ label: dlg(bonusKey).actions?.[0] || "...okay", onClick: () => { _waveAdvancing = false; buildLabelBrushes(); updateFeedback(getCurrentSpace()); } }],
     });
   } else {
     _waveAdvancing = false;
   }
   saveGuestRoom();
+  persistSoloManifest();
 }
 
 function refreshAuthoringUI(space) {
@@ -1969,7 +2068,8 @@ function refreshAuthoringUI(space) {
 
   toolButtons.forEach((button) => {
     const tool = button.dataset.tool;
-    button.disabled = false;
+    // Readonly guests can only view
+    button.disabled = isGuestReadonly && tool !== "view";
     button.setAttribute("aria-pressed", tool === authorMode ? "true" : "false");
   });
 
@@ -1988,7 +2088,9 @@ async function exportCurrentRoomPackage() {
   }
 
   const draft = getDraft(space);
-  const fileName = `${manifest.roomId}-${space.id}.room`;
+  const displayName = manifest.owner?.displayName || manifest.roomId;
+  const suffix = space.id === "main" ? "" : `_${space.id}`;
+  const fileName = `${displayName}${suffix}.room`;
 
   try {
     const asset = assetById.get(space.sceneArtAssetId);
@@ -2014,6 +2116,8 @@ async function exportCurrentRoomPackage() {
 }
 
 function setAuthorMode(nextMode) {
+  // Readonly guests can only view
+  if (isGuestReadonly && nextMode !== "view") return;
   if (nextMode === "interactive" && authorMode !== "interactive") {
     selectedInteractiveRegionId = null;
     pendingArtSrc = null;
@@ -2081,17 +2185,19 @@ function getLabelBrushesForSpace(space) {
   const goals = getScoreGoals(space);
   if (!goals.length) return OBJECT_LABEL_BRUSHES;
 
-  const unlocked = goals.filter((g) => (g.wave || 1) <= wave);
-  return unlocked.map((g) => {
-    // Check if it exists in the hardcoded brushes
+  // Resident mode: no wave gating, all slots always available
+  const unlocked = isResident ? goals : goals.filter((g) => (g.wave || 1) <= wave);
+  return unlocked.map((g, i) => {
     const existing = labelBrushById.get(g.labelId);
     if (existing) return existing;
-    // Generate from goal (bonus room)
+    // Generate from goal (bonus room or resident)
     return {
       id: g.labelId,
-      label: g.label,
-      key: g.label,
-      overlay: BONUS_LABEL_OVERLAYS[g.labelId] || "rgba(180, 180, 180, 0.62)",
+      label: g.label || (isResident ? `Slot ${i + 1}` : g.label),
+      key: g.label || (isResident ? `Slot ${i + 1}` : g.label),
+      overlay: isResident
+        ? RESIDENT_OVERLAY_COLORS[i % RESIDENT_OVERLAY_COLORS.length]
+        : BONUS_LABEL_OVERLAYS[g.labelId] || "rgba(180, 180, 180, 0.62)",
     };
   });
 }
@@ -2128,11 +2234,27 @@ function buildLabelBrushes() {
       swatch.style.background = cssColorWithAlpha(entry.overlay, 0.8);
     }
 
-    const label = document.createElement("p");
-    label.className = "label-key__label";
-    label.textContent = entry.key;
+    // Resident mode: editable inline rename field for non-erase brushes
+    if (isResident && entry.id !== ERASE_ID) {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "label-key__label";
+      input.value = entry.label.startsWith("Slot ") ? "" : entry.label;
+      input.placeholder = entry.key;
+      input.maxLength = 24;
+      input.style.cssText = "background:transparent;border:none;border-bottom:1px dashed currentColor;color:inherit;font:inherit;width:5em;padding:0;outline:none;cursor:text;";
+      input.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("change", () => {
+        renameResidentLabel(getCurrentSpace(), entry.id, input.value.trim());
+      });
+      button.append(swatch, input);
+    } else {
+      const label = document.createElement("p");
+      label.className = "label-key__label";
+      label.textContent = entry.key;
+      button.append(swatch, label);
+    }
 
-    button.append(swatch, label);
     button.addEventListener("click", () => {
       activeLabelLayer = "objects";
       selectedObjectLabelId = entry.id;
@@ -2202,6 +2324,10 @@ function buildLabelKey() {
   const brushes = getScoreGoals(getCurrentSpace())
     .filter((criterion) => {
       if (!criterion?.labelId || seen.has(criterion.labelId)) {
+        return false;
+      }
+      // Resident mode: hide unnamed slots in view mode
+      if (isResident && !criterion.label) {
         return false;
       }
       seen.add(criterion.labelId);
@@ -2390,20 +2516,20 @@ async function handleImportedRoomFile(file) {
       // Importing Gum's stuff into Glitchby's space
       showDialog({
         speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-        text: `${glitchText(20)} N̷O N̸O N̶O. ${glitchText(21)}`,
+        text: dlgText("import-wrong-space-glitch", { _glitchSeed: 20 }),
         actions: [{ label: zalgoify("......"), onClick: () => {} }],
       });
     } else if (targetIsGlitchby) {
       // Importing Glitchby's stuff into Gum's space
       showDialog({
         speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-        text: `${glitchText(15)} m̷ine m̸ine m̶ine.`,
+        text: dlgText("import-mine", { _glitchSeed: 15 }),
         actions: [{ label: zalgoify("......"), onClick: () => {} }],
       });
     } else {
       showDialog({
         speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-        text: `${glitchText(22)} m̷ine m̸ine m̶ine.`,
+        text: dlgText("import-mine", { _glitchSeed: 22 }),
         actions: [{ label: zalgoify("......"), onClick: () => {} }],
       });
     }
@@ -2666,7 +2792,8 @@ navBackwardButton?.addEventListener("click", () => {
   if (activeSpaceId === "main" || !SPACE_PARENT[activeSpaceId]) {
     const treefortLink = manifest?.links?.find((item) => item.href);
     if (treefortLink?.href) {
-      window.location.assign(treefortLink.href);
+      const fromId = manifest.roomId || "";
+      window.location.assign(fromId ? `${treefortLink.href}#from=${encodeURIComponent(fromId)}` : treefortLink.href);
     }
   }
 });
@@ -2697,13 +2824,27 @@ navBonusButton?.addEventListener("click", () => {
   if (bonusSpace) jumpToSpace(bonusSpace.id);
 });
 
-navTreefortButton?.addEventListener("click", () => {
+navTreefortButton?.addEventListener("click", async () => {
   if (!manifest) {
     return;
   }
+  // Resident mode: go to neighbor hub
+  if (isResident) {
+    try {
+      const res = await fetch("../data/treefort.json");
+      if (res.ok) {
+        const tf = await res.json();
+        if (tf.resident?.neighborUrl) {
+          window.location.assign(tf.resident.neighborUrl);
+          return;
+        }
+      }
+    } catch { /* fall through */ }
+  }
   const treefortLink = manifest.links.find((item) => item.href);
   if (treefortLink?.href) {
-    window.location.assign(treefortLink.href);
+    const fromId = manifest.roomId || "";
+    window.location.assign(fromId ? `${treefortLink.href}#from=${encodeURIComponent(fromId)}` : treefortLink.href);
   }
 });
 
@@ -2747,11 +2888,13 @@ importRoomInput?.addEventListener("change", async (event) => {
       manifest.activeWave = 1;
       space.revealState = "drawn";
       await saveGuestRoom();
+      persistSoloManifest();
+      renderActiveSpace();
       const name = manifest.owner?.displayName || "friend";
       showDialog({
         speaker: "Gum", frames: GUM_HAPPY,
-        text: `${name}!! You drew a whole room! Look at it! Okay okay okay — now you can paint it. Color everything in, and I'll tell you what the room still needs!`,
-        actions: [{ label: "Let's go!", onClick: () => {} }],
+        text: dlgText("import-main-room", { name }),
+        actions: [{ label: dlg("import-main-room").actions?.[0] || "Let's go!", onClick: () => {} }],
       });
     }
 
@@ -2759,10 +2902,11 @@ importRoomInput?.addEventListener("change", async (event) => {
     if (space.id === "bonus" && space.revealState !== "drawn") {
       space.revealState = "drawn";
       await saveGuestRoom();
+      renderActiveSpace();
       showDialog({
         speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-        text: `${glitchText(13)} ...you actually d̷rew it. ${glitchText(14)} now color it in. teach the r̷oom what's dry and what's w̸et.`,
-        actions: [{ label: "...okay", onClick: () => {} }],
+        text: dlgText("import-bonus-room", { _glitchSeed: 13 }),
+        actions: [{ label: dlg("import-bonus-room").actions?.[0] || "...okay", onClick: () => {} }],
       });
     }
   } catch (error) {
@@ -2945,6 +3089,19 @@ function renderActiveSpace() {
   }
   renderNavigation(space);
 
+  // Sticker book + snapshot buttons track current space
+  const inStickerMode = isResident || ((guestParam || isSolo) && manifest.questPhase === "decorating" && isBonusComplete());
+  if (stickerBookButton) {
+    stickerBookButton.classList.toggle("hidden", !inStickerMode);
+    if (!inStickerMode) closeStickerBook();
+  }
+  if (captureButton) {
+    const showCapture = inStickerMode && space.id !== "secret";
+    captureButton.classList.toggle("hidden", !showCapture);
+    captureButton.disabled = stickerBookFirstOpen || (manifest.stickers || []).length >= MAX_CAPTURES;
+    authorScore.classList.toggle("hidden", showCapture);
+  }
+
   clearStage();
   resetStatus(space);
   updateFeedback(space);
@@ -3031,7 +3188,7 @@ let _talkInterval = null;
  *   text    — dialog body string
  *   actions — [{ label, onClick }]
  */
-function showDialog({ speaker, frames, text, actions }) {
+function showDialog({ speaker, frames, text, actions, input, animSpeed }) {
   if (!questDialogEl) return;
   if (_talkInterval) { clearInterval(_talkInterval); _talkInterval = null; }
 
@@ -3045,6 +3202,7 @@ function showDialog({ speaker, frames, text, actions }) {
   questDialogPortrait.onload = () => sizePortrait(questDialogPortrait);
   questDialogPortrait.src = frames[0];
   questDialogPortrait.alt = speaker;
+  questDialogPortrait.dataset.speaker = speaker.toLowerCase();
   questDialogSpeaker.textContent = speaker;
   questDialogText.textContent = text;
   questDialogActions.replaceChildren();
@@ -3054,7 +3212,18 @@ function showDialog({ speaker, frames, text, actions }) {
     _talkInterval = setInterval(() => {
       frame = 1 - frame;
       questDialogPortrait.src = frames[frame];
-    }, 260);
+    }, animSpeed || 260);
+  }
+
+  let inputEl = null;
+  if (input) {
+    inputEl = document.createElement("input");
+    inputEl.type = "text";
+    inputEl.className = "quest-dialog__input";
+    inputEl.placeholder = input.placeholder || "";
+    inputEl.maxLength = input.maxLength || 48;
+    questDialogActions.appendChild(inputEl);
+    requestAnimationFrame(() => inputEl.focus());
   }
 
   for (const action of actions) {
@@ -3065,11 +3234,13 @@ function showDialog({ speaker, frames, text, actions }) {
     btn.addEventListener("click", () => {
       if (_talkInterval) { clearInterval(_talkInterval); _talkInterval = null; }
       questDialogEl.classList.add("hidden");
-      if (action.onClick) action.onClick();
+      if (captureButton && !stickerBookFirstOpen && !stickerBookOpen) captureButton.disabled = false;
+      if (action.onClick) action.onClick(inputEl ? inputEl.value : undefined);
     });
     questDialogActions.appendChild(btn);
   }
   questDialogEl.classList.remove("hidden");
+  if (captureButton) captureButton.disabled = true;
 }
 
 const GUM_HAPPY = ["./assets/characters/gumDialA01.png", "./assets/characters/gumDialA02.png"];
@@ -3099,7 +3270,7 @@ function buildParchment(guestId, guestName) {
     guestName,
     createdAt: new Date().toISOString(),
     canvas: { width: 64, height: 64 },
-    instructions: "Draw a key. One chance. Forever.",
+    instructions: dlg("inst-parchment").text || "Draw a key. One chance. Forever.",
   };
 }
 
@@ -3126,17 +3297,17 @@ function runQuestPhase() {
   if (manifest.questPhase === "awaiting-key") {
     showDialog({
       speaker: "Gum", frames: GUM_HAPPY,
-      text: `Oh! It's you, ${name}! Your room's not quite ready yet! I need you to bring me a drawing of a key, so I can unlock your Sticker Book! It must be drawn on special paper. Here, take this Parchment to Icy, she'll know what to do.`,
+      text: dlgText("quest-awaiting-key", { name }),
       actions: [
-        { label: "Take the Parchment", onClick: downloadParchment },
-        { label: "I have a Key!", onClick: () => importRoomInput?.click() },
-        { label: "Icy?", onClick: () => {
+        { label: dlg("quest-awaiting-key").actions?.[0] || "Take the Parchment", onClick: downloadParchment },
+        { label: dlg("quest-awaiting-key").actions?.[1] || "I have a Key!", onClick: () => importRoomInput?.click() },
+        { label: dlg("quest-awaiting-key").actions?.[2] || "Icy?", onClick: () => {
           showDialog({
             speaker: "Gum", frames: GUM_HAPPY,
-            text: `IcyAnimation is how we all draw our rooms! TreeFort is just for coloring. You can download IcyAnimation at github.com/chewgumlabs/IcyAnimation!`,
+            text: dlg("quest-icy-explain").text || "IcyAnimation is how we draw rooms!",
             actions: [
-              { label: "Take the Parchment", onClick: downloadParchment },
-              { label: "Not yet", onClick: () => {} },
+              { label: dlg("quest-icy-explain").actions?.[0] || "Take the Parchment", onClick: downloadParchment },
+              { label: dlg("quest-icy-explain").actions?.[1] || "Not yet", onClick: () => {} },
             ],
           });
         }},
@@ -3148,11 +3319,11 @@ function runQuestPhase() {
   if (manifest.questPhase === "awaiting-room") {
     showDialog({
       speaker: "Gum", frames: GUM_SAD,
-      text: `I'm afraid I have some bad news... Your room is totally empty. No bed, no rug, not even a floor. If you could take this .Room file to Icy and draw your own floor, rug, and your own bed, then you can come back and you can color it all in here!`,
+      text: dlg("quest-awaiting-room").text || "Your room is empty.",
       actions: [
-        { label: "Take the Room file", onClick: () => downloadRoomFile() },
-        { label: "I drew my Room!", onClick: () => importRoomInput?.click() },
-        { label: "Not yet", onClick: () => {} },
+        { label: dlg("quest-awaiting-room").actions?.[0] || "Take the Room file", onClick: () => downloadRoomFile() },
+        { label: dlg("quest-awaiting-room").actions?.[1] || "I drew my Room!", onClick: () => importRoomInput?.click() },
+        { label: dlg("quest-awaiting-room").actions?.[2] || "Not yet", onClick: () => {} },
       ],
     });
     return;
@@ -3164,12 +3335,16 @@ function runQuestPhase() {
 
     // Secret room — graduation + sticker book
     if (space && space.id === "secret") {
-      if (stickerBookButton) stickerBookButton.classList.remove("hidden");
-      showDialog({
-        speaker: "Gum", frames: GUM_HAPPY,
-        text: `You found it! You've done everything a guest can do. If you want to take up permanent residency with us, you can host your own room — your OWN Treefort. Ask the person who invited you how to get started. We'd love to have you as a neighbor.`,
-        actions: [{ label: "Wow", onClick: () => {} }],
-      });
+      // Button visibility handled in renderActiveSpace()
+      if (!secretGraduationShown) {
+        secretGraduationShown = true;
+    manifest.secretGraduationShown = true;
+        showDialog({
+          speaker: "Gum", frames: GUM_HAPPY,
+          text: `You found it! You've done everything a guest can do. If you want to take up permanent residency with us, you can host your own room — your OWN Treefort. Ask the person who invited you how to get started. We'd love to have you as a neighbor.`,
+          actions: [{ label: "Wow", onClick: () => {} }],
+        });
+      }
       return;
     }
 
@@ -3177,10 +3352,10 @@ function runQuestPhase() {
     if (space && space.id === "bonus" && wave === 1) {
       showDialog({
         speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-        text: `${glitchText(1)} ...y̷ou're here. f1nally. ${glitchText(2)} my room n̶eeds DRY and WET ̸̱anything el̵se. tell Icy dry and wet r̷oom.`,
+        text: dlgText("quest-bonus-intro", { _glitchSeed: 1 }),
         actions: [
-          { label: "How do I draw Dry and Wet?", onClick: () => { downloadBonusRoomFile(); } },
-          { label: "Leave", onClick: () => { jumpToSpace("main"); } },
+          { label: dlg("quest-bonus-intro").actions?.[0] || "How do I draw Dry and Wet?", onClick: () => { downloadBonusRoomFile(); } },
+          { label: dlg("quest-bonus-intro").actions?.[1] || "Leave", onClick: () => { jumpToSpace("main"); } },
         ],
       });
       return;
@@ -3190,26 +3365,28 @@ function runQuestPhase() {
     if (space && space.id === "main" && wave === 1) {
       showDialog({
         speaker: "Gum", frames: GUM_HAPPY,
-        text: `Welcome back, ${manifest.owner?.displayName || "friend"}! Your room looks great! Now I need you to teach the room what everything is. Color in the floor, the rug, and the bed so the room knows what's what.`,
-        actions: [{ label: "Let's go!", onClick: () => {} }],
+        text: dlgText("quest-decorating-main", { name: manifest.owner?.displayName || "friend" }),
+        actions: [{ label: dlg("quest-decorating-main").actions?.[0] || "Let's go!", onClick: () => {} }],
       });
     }
     return;
   }
 }
 
-function downloadRoomFile() {
+function downloadRoomFile(options = {}) {
   const guestName = manifest.owner.displayName;
   const roomFile = {
     version: 1,
     app: "TreeFort",
-    questPhase: "awaiting-room",
+    questPhase: options.questPhase || "awaiting-room",
     guestId: manifest.roomId,
     guestName,
     createdAt: new Date().toISOString(),
     canvas: { width: 256, height: 192 },
-    instructions: "Draw your room. Walls, floor, furniture — whatever you want.",
+    instructions: options.instructions || dlg("inst-room-file").text || "Draw your room.",
   };
+  if (options.chewMessage) roomFile.chewMessage = options.chewMessage;
+  if (options.chewMood) roomFile.chewMood = options.chewMood;
   const blob = new Blob([JSON.stringify(roomFile, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -3232,7 +3409,8 @@ function downloadBonusRoomFile() {
     guestName,
     createdAt: new Date().toISOString(),
     canvas: { width: 256, height: 192 },
-    instructions: "Draw Glitchby's room. Dry things and wet things. Don't ask why.",
+    instructions: dlg("inst-bonus-room").text || "Draw Glitchby's room.",
+    chewMessage: dlg("inst-bonus-chew").text || "Glitchby needs a room too.",
   };
   const blob = new Blob([JSON.stringify(roomFile, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -3265,7 +3443,7 @@ async function handleSpecialKeyImport(file) {
     throw new Error("That doesn't look like a SpecialKey from Icy.");
   }
 
-  // Store the key art if present (IcyAnimation embeds it as a data URL)
+  // Store the key art as-is (displayed at 2x via CSS pixelated scaling)
   if (keyData.keyArt) {
     manifest.keyArt = keyData.keyArt;
   }
@@ -3274,18 +3452,19 @@ async function handleSpecialKeyImport(file) {
   manifest.questPhase = "awaiting-room";
   manifest.activeWave = 0;
   await saveGuestRoom();
+  persistSoloManifest();
 
   const name = manifest.owner?.displayName || "friend";
   showDialog({
     speaker: "Gum", frames: GUM_HAPPY,
-    text: `Oh how pretty! I'll hold onto your key for now, because I'm afraid I have some bad news...`,
-    actions: [{ label: "What?", onClick: () => {
+    text: dlg("quest-key-accepted").text || "Oh how pretty!",
+    actions: [{ label: dlg("quest-key-accepted").actions?.[0] || "What?", onClick: () => {
       showDialog({
         speaker: "Gum", frames: GUM_SAD,
-        text: `Your room is totally empty. No bed, no rug, not even a floor. If you could take this .Room file to Icy and draw your own floor, rug, and your own bed, then you can come back and color it all in here!`,
+        text: dlg("quest-key-then-room").text || "Your room is empty.",
         actions: [
-          { label: "Take the Room file", onClick: () => downloadRoomFile() },
-          { label: "Not yet", onClick: () => {} },
+          { label: dlg("quest-key-then-room").actions?.[0] || "Take the Room file", onClick: () => downloadRoomFile() },
+          { label: dlg("quest-key-then-room").actions?.[1] || "Not yet", onClick: () => {} },
         ],
       });
     }}],
@@ -3297,7 +3476,9 @@ async function handleSpecialKeyImport(file) {
 // ════════════════════════════════════════
 
 const stickerBookButton = document.getElementById("sticker-book-button");
+const captureButton = document.getElementById("capture-button");
 const stickerBookOverlay = document.getElementById("sticker-book-overlay");
+const stickerBookClose = document.getElementById("sticker-book-close");
 const stickerBookPage = document.getElementById("sticker-book-page");
 const stickerBookPageNum = document.getElementById("sticker-book-page-num");
 const stickerBookLeft = document.getElementById("sticker-book-left");
@@ -3306,13 +3487,19 @@ const stickerBookRight = document.getElementById("sticker-book-right");
 let stickerBookOpen = false;
 let stickerBookIndex = 0;
 let stickerBookFirstOpen = true;
+let secretGraduationShown = false;
+let captureWarningShown = false;
+let stickerBookSawCapture = false;
+const MAX_CAPTURES = 64;
 
 function getStickerPages() {
-  // Page 1 is always the key (if they have one)
-  // Future: additional sticker pages from book.json
   const pages = [];
   if (manifest.keyArt) {
     pages.push({ type: "key", label: "Your Key", dataUrl: manifest.keyArt });
+  }
+  const stickers = manifest.stickers || [];
+  for (const s of stickers) {
+    pages.push({ type: "snapshot", label: s.label, date: s.date, caption: s.caption, dataUrl: s.dataUrl });
   }
   if (pages.length === 0) {
     pages.push({ type: "empty", label: "Empty" });
@@ -3338,46 +3525,142 @@ function renderStickerPage() {
     img.src = page.dataUrl;
     img.alt = page.label;
     stickerBookPage.appendChild(img);
+    if (page.caption || page.date) {
+      const line = document.createElement("p");
+      line.className = "sticker-book__caption";
+      const parts = [];
+      if (page.caption) parts.push(page.caption);
+      if (page.date) parts.push(page.date);
+      line.textContent = parts.join("  ");
+      stickerBookPage.appendChild(line);
+    }
   }
 
-  stickerBookPageNum.textContent = `${stickerBookIndex + 1} / ${pages.length}`;
+  const label = page.label || `${stickerBookIndex + 1} / ${pages.length}`;
+  stickerBookPageNum.textContent = label;
   stickerBookLeft.disabled = stickerBookIndex === 0;
   stickerBookRight.disabled = stickerBookIndex >= pages.length - 1;
+
+  // Mark that they've seen a capture (warning fires on book close)
+  if (page.type === "snapshot" && !captureWarningShown) {
+    stickerBookSawCapture = true;
+  }
+}
+
+function openStickerBook() {
+  stickerBookOpen = true;
+  stickerBookOverlay.classList.remove("hidden");
+  stickerBookIndex = 0;
+  renderStickerPage();
+  if (captureButton) captureButton.disabled = true;
+}
+
+function closeStickerBook() {
+  stickerBookOpen = false;
+  stickerBookOverlay.classList.add("hidden");
+
+  if (stickerBookSawCapture && !captureWarningShown) {
+    captureWarningShown = true;
+    manifest.captureWarningShown = true;
+    stickerBookSawCapture = false;
+    const remaining = MAX_CAPTURES - (manifest.stickers || []).length;
+    showDialog({
+      speaker: "", frames: ["./assets/characters/theSbookClosed.png", "./assets/characters/theSbookOpen.png"],
+      animSpeed: 520,
+      text: dlgText("sticker-capture-warning", { remaining }),
+      actions: [{ label: dlg("sticker-capture-warning").actions?.[0] || "I am aware.", onClick: () => {} }],
+    });
+    return;
+  }
+
+  if (captureButton && !stickerBookFirstOpen) captureButton.disabled = false;
 }
 
 function toggleStickerBook() {
-  stickerBookOpen = !stickerBookOpen;
-  if (stickerBookOpen) {
-    if (stickerBookFirstOpen) {
-      stickerBookFirstOpen = false;
-      // Glitchby gibberish → "What?" → Gum explains
-      showDialog({
-        speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
-        text: `${glitchText(42)} ̸̱̌s̵t̸̰̊i̷ck̶er̵ b̸00k ${glitchText(43)} ini̷tial̶ized ${glitchText(44)} y̷our k̶ey is ins̵ide ${glitchText(45)}`,
-        actions: [{ label: "What?", onClick: () => {
-          showDialog({
-            speaker: "Gum", frames: GUM_HAPPY,
-            text: `...I said this is your Sticker Book. There's nothing left for you to draw, but you're welcome to stay until your time is up! Go visit a neighbor, maybe you'll be inspired. Real people are always so inspiring.`,
-            actions: [{ label: "Okay!", onClick: () => {
-              stickerBookOverlay.classList.remove("hidden");
-              stickerBookIndex = 0;
-              renderStickerPage();
-            }}],
-          });
-        }}],
-      });
-      return;
-    }
-    stickerBookOverlay.classList.remove("hidden");
-    stickerBookIndex = 0;
-    renderStickerPage();
-  } else {
-    stickerBookOverlay.classList.add("hidden");
+  if (stickerBookOpen) { closeStickerBook(); return; }
+
+  if (stickerBookFirstOpen) {
+    stickerBookFirstOpen = false;
+    manifest.stickerBookOpened = true;
+    persistSoloManifest();
+    showDialog({
+      speaker: "", frames: ["./assets/characters/theSbookClosed.png"],
+      text: dlg("sticker-first-open").text || "Take this Sticker Book.",
+      actions: [{ label: dlg("sticker-first-open").actions?.[0] || "Thanks?", onClick: openStickerBook }],
+    });
+    return;
   }
+  openStickerBook();
+}
+
+function takeSnapshot() {
+  const space = getCurrentSpace();
+  if (!space || space.revealState !== "drawn") return;
+  const stickers = manifest.stickers || [];
+  if (stickers.length >= MAX_CAPTURES) return;
+
+  // Composite visible layers onto an offscreen canvas
+  const w = manifest.stage.width;
+  const h = manifest.stage.height;
+  const offscreen = document.createElement("canvas");
+  offscreen.width = w;
+  offscreen.height = h;
+  const ctx = offscreen.getContext("2d");
+
+  // 1. Fill layer (colored cells)
+  ctx.drawImage(fillLayer, 0, 0);
+
+  // 2. Scene canvas (if visible — imported room art rendered here)
+  if (!sceneCanvas.classList.contains("hidden")) {
+    ctx.drawImage(sceneCanvas, 0, 0);
+  }
+
+  // 3. Scene lineart (img element — drawn rooms from Icy)
+  if (!sceneLineart.classList.contains("hidden") && sceneLineart.naturalWidth) {
+    ctx.drawImage(sceneLineart, 0, 0, w, h);
+  }
+
+  const dataUrl = offscreen.toDataURL("image/png");
+  const now = new Date();
+  const date = `${now.getFullYear()} ${String(now.getMonth() + 1).padStart(2, "0")} ${String(now.getDate()).padStart(2, "0")}`;
+
+  if (!manifest.stickers) manifest.stickers = [];
+  manifest.stickers.push({
+    label: `${space.title}  ${date}`,
+    date,
+    dataUrl,
+    spaceId: space.id,
+  });
+  persistSoloManifest();
+
+  const stickerEntry = manifest.stickers[manifest.stickers.length - 1];
+
+  // Show confirmation with the book icon
+  showDialog({
+    speaker: "", frames: ["./assets/characters/theSbookOpen.png"],
+    text: dlg("sticker-snapshot-1").text || "I captured your room.",
+    actions: [{ label: dlg("sticker-snapshot-1").actions?.[0] || "Oh I see.", onClick: () => {
+      // Follow-up: ask how they feel
+      showDialog({
+        speaker: "", frames: ["./assets/characters/theSbookClosed.png"],
+        text: dlg("sticker-snapshot-2").text || "How do you feel in this room?",
+        input: { placeholder: "...", maxLength: 48 },
+        actions: [
+          { label: dlg("sticker-snapshot-2").actions?.[0] || "This", onClick: (val) => {
+            if (val && val.trim()) stickerEntry.caption = val.trim();
+          }},
+          { label: dlg("sticker-snapshot-2").actions?.[1] || "Nothing", onClick: () => {} },
+        ],
+      });
+    }}],
+  });
 }
 
 if (stickerBookButton) {
   stickerBookButton.addEventListener("click", toggleStickerBook);
+}
+if (captureButton) {
+  captureButton.addEventListener("click", takeSnapshot);
 }
 if (stickerBookLeft) {
   stickerBookLeft.addEventListener("click", () => {
@@ -3390,6 +3673,47 @@ if (stickerBookRight) {
     stickerBookIndex++;
     renderStickerPage();
   });
+}
+if (stickerBookClose) {
+  stickerBookClose.addEventListener("click", closeStickerBook);
+}
+
+// ════════════════════════════════════════
+//  Sticker Book Export (zip)
+// ════════════════════════════════════════
+
+function exportStickerBook() {
+  const guestName = manifest.owner?.displayName || manifest.roomId;
+  const compiled = compileManifestForSave();
+
+  // Bundle scene overrides from localStorage
+  const scenes = {};
+  for (const space of manifest.spaces) {
+    const raw = window.localStorage.getItem(sceneOverrideStorageKey(space.id));
+    if (raw) {
+      try { scenes[space.id] = JSON.parse(raw); } catch { /* skip corrupt */ }
+    }
+  }
+
+  const bundle = {
+    app: "TreeFort",
+    format: "treefort-export",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    guest: guestName,
+    guestId: manifest.roomId,
+    room: compiled,
+    scenes,
+  };
+
+  const json = JSON.stringify(bundle, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${guestName}.treefort`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 //  Guest Room Save
@@ -3463,19 +3787,30 @@ function compileManifestForSave() {
   return compiled;
 }
 
+let _guestSaveDirty = false;
+let _guestSaving = false;
+const AUTOSAVE_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
+
+function markGuestDirty() {
+  if (!_guestSaveDirty && guestSaveButton && !guestSaveButton.classList.contains("hidden")) {
+    _guestSaveDirty = true;
+    guestSaveButton.textContent = "Save to Tree";
+  }
+}
+
 async function saveGuestRoom() {
   const guestId = new URLSearchParams(window.location.search).get("guest");
   if (!guestId) return;
+  if (_guestSaving) return;
 
   const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
-  if (!auth || auth.guestId !== guestId) {
-    setStatus("Save failed — session expired. Go back to the tree and re-enter your passphrase.");
-    return;
-  }
+  if (!auth || auth.guestId !== guestId) return;
 
-  guestSaveButton.disabled = true;
-  guestSaveButton.textContent = "Saving...";
-  setStatus("Saving room...");
+  _guestSaving = true;
+  if (guestSaveButton) {
+    guestSaveButton.disabled = true;
+    guestSaveButton.textContent = "Saving...";
+  }
 
   try {
     const roomData = compileManifestForSave();
@@ -3487,24 +3822,260 @@ async function saveGuestRoom() {
 
     const result = await res.json();
     if (res.ok && result.ok) {
-      setStatus("Room saved!");
+      _guestSaveDirty = false;
+      if (guestSaveButton) guestSaveButton.textContent = "Saved to Tree";
     } else {
-      setStatus(`Save failed: ${result.error || "unknown error"}`);
+      if (guestSaveButton) guestSaveButton.textContent = "Save to Tree";
     }
-  } catch (err) {
-    setStatus(`Save failed: ${err.message}`);
+  } catch {
+    if (guestSaveButton) guestSaveButton.textContent = "Save to Tree";
   } finally {
-    guestSaveButton.disabled = false;
-    guestSaveButton.textContent = "Save Room";
+    _guestSaving = false;
+    if (guestSaveButton) guestSaveButton.disabled = false;
   }
 }
 
+// Manual click
 if (guestSaveButton) {
   guestSaveButton.addEventListener("click", () => void saveGuestRoom());
 }
 
+// Auto-save: periodic check
+setInterval(() => {
+  if (_guestSaveDirty && !_guestSaving) saveGuestRoom();
+}, AUTOSAVE_INTERVAL_MS);
+
+// Auto-save: tab hide / app minimize
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && _guestSaveDirty && !_guestSaving) saveGuestRoom();
+});
+
+// ════════════════════════════════════════
+//  Publish Room (Solo / Resident → GitHub)
+// ════════════════════════════════════════
+
+const GITHUB_TOKEN_KEY = "treefort-github-token";
+const GITHUB_API = "https://api.github.com";
+const publishButton = document.getElementById("publish-button");
+
+function getGitHubToken() { return localStorage.getItem(GITHUB_TOKEN_KEY); }
+function setGitHubToken(token) { localStorage.setItem(GITHUB_TOKEN_KEY, token.trim()); }
+function clearGitHubToken() { localStorage.removeItem(GITHUB_TOKEN_KEY); }
+
+function getRepoSlug() {
+  if (manifest.owner?.repo) return manifest.owner.repo;
+  if (manifest.owner?.githubLogin) return `${manifest.owner.githubLogin}/TreeFort`;
+  return null;
+}
+
+async function githubPutFile(token, repoSlug, filePath, content, commitMessage) {
+  const url = `${GITHUB_API}/repos/${repoSlug}/contents/${filePath}`;
+  const headers = {
+    "Authorization": `Bearer ${token}`,
+    "Accept": "application/vnd.github+json",
+  };
+
+  // Get existing file SHA (needed for updates)
+  let sha = null;
+  try {
+    const getRes = await fetch(url, { headers });
+    if (getRes.ok) sha = (await getRes.json()).sha;
+  } catch {}
+
+  const body = {
+    message: commitMessage,
+    content: btoa(unescape(encodeURIComponent(content))),
+  };
+  if (sha) body.sha = sha;
+
+  const putRes = await fetch(url, {
+    method: "PUT",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!putRes.ok) {
+    const err = await putRes.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API error: ${putRes.status}`);
+  }
+  return putRes.json();
+}
+
+function showPublishSetup() {
+  showDialog({
+    speaker: "Gum", frames: GUM_HAPPY,
+    text: dlg("publish-setup-intro").text || "To publish, you need a GitHub token.",
+    actions: [
+      { label: dlg("publish-setup-intro").actions?.[0] || "Walk me through it", onClick: showPublishStep1 },
+      { label: dlg("publish-setup-intro").actions?.[1] || "I already have one", onClick: showPublishPasteToken },
+    ],
+  });
+}
+
+function showPublishStep1() {
+  showDialog({
+    speaker: "Gum", frames: GUM_HAPPY,
+    text: dlg("publish-setup-step1").text || "Go to github.com/settings/tokens to create a token.",
+    actions: [
+      { label: dlg("publish-setup-step1").actions?.[0] || "I copied it!", onClick: showPublishPasteToken },
+    ],
+  });
+}
+
+function showPublishPasteToken() {
+  showDialog({
+    speaker: "Gum", frames: GUM_HAPPY,
+    text: dlg("publish-setup-paste").text || "Paste your token here.",
+    input: { placeholder: "ghp_xxxxxxxxxxxx", maxLength: 200 },
+    actions: [
+      { label: dlg("publish-setup-paste").actions?.[0] || "Save token", onClick: (val) => {
+        if (val && val.trim().length > 10) {
+          setGitHubToken(val);
+          publishRoom();
+        } else {
+          setStatus("That doesn't look like a GitHub token.");
+        }
+      }},
+      { label: dlg("publish-setup-paste").actions?.[1] || "Cancel", onClick: () => {} },
+    ],
+  });
+}
+
+async function publishRoom() {
+  const token = getGitHubToken();
+  if (!token) { showPublishSetup(); return; }
+
+  const repoSlug = getRepoSlug();
+  if (!repoSlug) {
+    setStatus("Can't publish — no repo info in room manifest. Set owner.repo in room.json.");
+    return;
+  }
+
+  if (publishButton) {
+    publishButton.disabled = true;
+    publishButton.textContent = "Publishing...";
+  }
+  setStatus("Publishing room...");
+
+  try {
+    // Compile and publish room.json
+    const compiled = compileManifestForSave();
+    await githubPutFile(token, repoSlug, "room/data/room.json",
+      JSON.stringify(compiled, null, 2), "Update room (published from TreeFort)");
+
+    // Publish scene overrides from localStorage
+    for (const space of manifest.spaces) {
+      const raw = window.localStorage.getItem(sceneOverrideStorageKey(space.id));
+      if (!raw) continue;
+      try {
+        const project = JSON.parse(raw);
+        if (project?.app !== "IcyAnimation") continue;
+        const asset = manifest.assets?.find(a => a.id === space.sceneArtAssetId);
+        if (!asset?.path) continue;
+        await githubPutFile(token, repoSlug, `room/${asset.path}`,
+          JSON.stringify(project, null, 2), `Update ${space.id} scene art`);
+      } catch {}
+    }
+
+    setStatus("Published!");
+    showDialog({
+      speaker: "Gum", frames: GUM_HAPPY,
+      text: dlg("publish-success").text || "Published!",
+      actions: [{ label: dlg("publish-success").actions?.[0] || "Nice!", onClick: () => {} }],
+    });
+  } catch (err) {
+    if (err.message?.includes("Bad credentials") || err.message?.includes("401")) {
+      clearGitHubToken();
+      setStatus("Token expired or invalid. Set up again.");
+      showPublishSetup();
+    } else {
+      setStatus(`Publish failed: ${err.message}`);
+      showDialog({
+        speaker: "Gum", frames: GUM_SAD,
+        text: dlgText("publish-error", { error: err.message }),
+        actions: [
+          { label: dlg("publish-error").actions?.[0] || "Try again", onClick: () => publishRoom() },
+          { label: dlg("publish-error").actions?.[1] || "Okay", onClick: () => {} },
+        ],
+      });
+    }
+  } finally {
+    if (publishButton) {
+      publishButton.disabled = false;
+      publishButton.textContent = "Publish Room";
+    }
+  }
+}
+
+if (publishButton) {
+  publishButton.addEventListener("click", () => void publishRoom());
+}
+
+async function checkGuestExpiry(guestId) {
+  let treefortData;
+  try {
+    const res = await fetch("../data/treefort.json", { cache: "no-store" });
+    if (!res.ok) return;
+    treefortData = await res.json();
+  } catch { return; }
+
+  const rules = treefortData.treefort?.guestRules;
+  if (!rules) return;
+
+  const door = treefortData.doors?.find((d) => d.id === guestId);
+  if (!door || door.status !== "occupied" || !door.moveInDate) return;
+
+  const moveIn = new Date(door.moveInDate + "T00:00:00");
+  const now = new Date();
+  const msLeft = (moveIn.getTime() + rules.stayDays * 86400000) - now.getTime();
+  const daysLeft = Math.max(0, Math.ceil(msLeft / 86400000));
+  const elapsed = Math.floor((now - moveIn) / 86400000);
+
+  let phase = "active";
+  if (msLeft <= 0) phase = "expired";
+  else if (elapsed >= rules.exportDay - 1) phase = "export";
+  else if (elapsed >= rules.readonlyDay - 1) phase = "readonly";
+  else if (elapsed >= rules.warnDay - 1) phase = "warning";
+
+  if (phase === "warning") {
+    showDialog({
+      speaker: "Gum", frames: GUM_SAD,
+      text: dlgText("expiry-warning", { daysLeft: daysLeft + " day" + (daysLeft === 1 ? "" : "s") }),
+      actions: [{ label: dlg("expiry-warning").actions?.[0] || "Okay", onClick: () => {} }],
+    });
+  } else if (phase === "readonly") {
+    isGuestReadonly = true;
+    if (authorMode !== "view") {
+      authorMode = "view";
+    }
+    refreshAuthoringUI(getCurrentSpace());
+    showDialog({
+      speaker: "Gum", frames: GUM_SAD,
+      text: dlg("expiry-readonly").text || "Your room is now read-only.",
+      actions: [{ label: dlg("expiry-readonly").actions?.[0] || "I understand", onClick: () => {} }],
+    });
+  } else if (phase === "export" || phase === "expired") {
+    isGuestReadonly = true;
+    if (authorMode !== "view") {
+      authorMode = "view";
+    }
+    refreshAuthoringUI(getCurrentSpace());
+    showDialog({
+      speaker: "Gum", frames: GUM_SAD,
+      text: dlg("expiry-export").text || "Your stay has ended.",
+      actions: [{
+        label: dlg("expiry-export").actions?.[0] || "Download my Sticker Book",
+        onClick: () => { exportStickerBook(); },
+      }, {
+        label: dlg("expiry-export").actions?.[1] || "Goodbye",
+        onClick: () => {},
+      }],
+    });
+  }
+}
+
 async function main() {
-  const guestParam = new URLSearchParams(window.location.search).get("guest");
+  guestParam = new URLSearchParams(window.location.search).get("guest");
   const dataUrl = guestParam ? `../rooms/${guestParam}/data.json` : "./data/room.json";
   const response = await fetch(dataUrl, { cache: "no-store" });
   if (!response.ok) {
@@ -3512,6 +4083,37 @@ async function main() {
   }
 
   manifest = await response.json();
+
+  // Load dialog text
+  try {
+    const dlgResp = await fetch("./data/dialog.json");
+    if (dlgResp.ok) DIALOG = await dlgResp.json();
+  } catch {}
+
+  // Detect resident / solo mode
+  isResident = !guestParam && manifest.instance === "resident";
+  isSolo = !guestParam && manifest.instance === "solo";
+
+  // Solo + Resident: restore persisted progress from localStorage
+  if (isSolo || isResident) {
+    loadSoloManifest();
+  }
+
+  // Restore persisted sticker book flags
+  stickerBookFirstOpen = isResident ? false : !manifest.stickerBookOpened;
+  secretGraduationShown = !!manifest.secretGraduationShown;
+  captureWarningShown = !!manifest.captureWarningShown;
+
+  // Resident mode: restore custom labels from localStorage
+  if (isResident) {
+    for (const space of (manifest.spaces || [])) {
+      const labels = loadResidentLabels(space.id);
+      for (const goal of (space.scoreGoals || [])) {
+        if (labels[goal.id]) goal.label = labels[goal.id];
+      }
+    }
+  }
+
   paletteById = new Map(manifest.palette.map((entry) => [entry.id, entry.hex]));
   for (const entry of PAINT_SWATCHES) {
     paletteById.set(entry.id, entry.hex);
@@ -3530,13 +4132,19 @@ async function main() {
   writeLocationSpaceId(readLocationSpaceId(), true);
   renderShell();
 
-  // Show save button for guest rooms
+  // Show save button for guest rooms, publish button for solo/resident
   if (guestParam && guestSaveButton) {
     guestSaveButton.classList.remove("hidden");
+  }
+  if ((isSolo || isResident) && publishButton) {
+    publishButton.classList.remove("hidden");
   }
 
   // Run quest phase dialog after room loads
   if (guestParam) {
+    runQuestPhase();
+    checkGuestExpiry(guestParam);
+  } else if (isSolo) {
     runQuestPhase();
   }
 }

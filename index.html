@@ -16,10 +16,6 @@
         <h1 class="sr-only" id="tree-title">Treefort doors</h1>
       </div>
 
-      <div class="hub-footer">
-        <p class="hub-title" id="hero-title">Treefort</p>
-        <p class="hub-lede" id="hero-lede">The giant tree with everyone's door on it.</p>
-      </div>
     </div>
 
     <div class="modal-shell hidden" id="door-modal" aria-hidden="true">
@@ -42,6 +38,32 @@
       </section>
     </div>
 
-    <script src="./app.js"></script>
+    <div class="gum-dialog hidden" id="gum-dialog" role="dialog" aria-label="Gum says">
+      <div class="gum-dialog__backdrop"></div>
+      <div class="gum-dialog__box">
+        <img class="gum-dialog__portrait" id="gum-dialog-portrait" src="" alt="Gum" />
+        <div class="gum-dialog__content">
+          <p class="gum-dialog__speaker">Gum</p>
+          <p class="gum-dialog__text" id="gum-dialog-text"></p>
+          <div class="gum-dialog__actions" id="gum-dialog-actions"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sbook-viewer hidden" id="sbook-viewer" role="dialog" aria-label="Sticker book">
+      <div class="sbook-viewer__backdrop" id="sbook-viewer-close"></div>
+      <div class="sbook-viewer__book">
+        <button class="sbook-viewer__x" id="sbook-viewer-x" type="button" aria-label="Close">&times;</button>
+        <p class="sbook-viewer__owner" id="sbook-viewer-owner"></p>
+        <div class="sbook-viewer__page" id="sbook-viewer-page"></div>
+        <div class="sbook-viewer__nav">
+          <button class="sbook-viewer__arrow" id="sbook-viewer-left" type="button" aria-label="Previous">&lt;</button>
+          <p class="sbook-viewer__pagenum" id="sbook-viewer-pagenum">1 / 1</p>
+          <button class="sbook-viewer__arrow" id="sbook-viewer-right" type="button" aria-label="Next">&gt;</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js?v=20260312c"></script>
   </body>
 </html>

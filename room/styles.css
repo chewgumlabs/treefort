@@ -162,7 +162,8 @@ a {
   cursor: default;
 }
 
-.guest-save-button {
+.guest-save-button,
+.publish-button {
   position: absolute;
   right: 6px;
   top: 50%;
@@ -1271,6 +1272,14 @@ body.debug-regions .region-hit {
   z-index: 1;
 }
 
+.quest-dialog__portrait[data-speaker="gum"] {
+  margin-top: -6px;
+}
+
+.quest-dialog__portrait[data-speaker=""] {
+  margin-top: 9px;
+}
+
 .quest-dialog__content {
   flex: 1;
   min-width: 0;
@@ -1307,9 +1316,35 @@ body.debug-regions .region-hit {
   flex-wrap: wrap;
 }
 
+.quest-dialog__input {
+  width: 100%;
+  max-width: 220px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  background: #2e2e2e;
+  font-family: "OrangeKid", "RetroPixel", monospace;
+  font-size: 16px;
+  color: #8c2b3a;
+  box-shadow: 4px 4px 0 var(--ink);
+  outline: none;
+}
+
+.quest-dialog__input::placeholder {
+  color: #8c2b3a;
+  opacity: 0.4;
+}
+
 .quest-dialog__actions .room-link {
-  font-family: "RetroPixel", monospace;
-  font-size: 11px;
+  font-family: "OrangeKid", "RetroPixel", monospace;
+  font-size: 16px;
+  font-weight: normal;
+  min-height: 32px;
+  padding: 2px 14px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ═══════════════════════════════════════
@@ -1318,9 +1353,22 @@ body.debug-regions .region-hit {
 
 .sticker-book-button {
   position: absolute;
-  right: 100px;
+  left: 6px;
   top: 50%;
   transform: translateY(-50%);
+  background: #8c2b3a;
+  color: #2e2e2e;
+  border-color: #2e2e2e;
+}
+
+.capture-button {
+  position: absolute;
+  left: 126px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #2e2e2e;
+  color: #8c2b3a;
+  border-color: #8c2b3a;
 }
 
 .sticker-book-overlay {
@@ -1334,10 +1382,35 @@ body.debug-regions .region-hit {
   background: var(--paper);
 }
 
+.sticker-book__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--bar);
+  background: var(--paper);
+  color: var(--bar);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: "RetroPixel", monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sticker-book__close:hover {
+  background: var(--bar);
+  color: var(--paper);
+}
+
 .sticker-book__page {
   flex: 1;
   width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 24px;
@@ -1351,9 +1424,20 @@ body.debug-regions .region-hit {
   object-fit: contain;
 }
 
+.sticker-book__caption {
+  margin: 2px 0 0;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  color: var(--bar);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sticker-book__page--empty {
   color: var(--bar);
-  font-family: "RetroPixel", monospace;
+  font-family: "Courier New", Courier, monospace;
   font-size: 12px;
   text-transform: uppercase;
 }
@@ -1388,7 +1472,7 @@ body.debug-regions .region-hit {
 
 .sticker-book__page-num {
   margin: 0;
-  font-family: "RetroPixel", monospace;
+  font-family: "Courier New", Courier, monospace;
   font-size: 11px;
   color: var(--ink);
   text-transform: uppercase;
