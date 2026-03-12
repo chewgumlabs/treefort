@@ -457,6 +457,9 @@ function renderDoors(rooms, rules) {
 
   rooms.forEach((room) => {
     if (room.segment == null || !room.slot) return;
+    if (room.type === "guest" && !room.href) {
+      room.href = `./room/?guest=${room.id}`;
+    }
     roomById.set(room.id, room);
 
     const visualSeg = (segmentCount - 1) - room.segment;
