@@ -2676,7 +2676,7 @@ function handleEditorStroke(event) {
 }
 
 editorLayer.addEventListener("pointerdown", (event) => {
-  if (authorMode === "view") {
+  if (authorMode === "view" || isGuestReadonly) {
     return;
   }
   const cell = clientToCell(event);
@@ -4184,6 +4184,7 @@ async function main() {
     const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
     if (!auth || auth.guestId !== guestParam) {
       isGuestReadonly = true;
+      authorMode = "view";
     }
   }
 
