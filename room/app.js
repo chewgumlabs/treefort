@@ -1135,9 +1135,19 @@ function buildRoomPackage(project, space, draft, options = {}) {
   };
 }
 
-async function buildStarterRoomPackage(space, draft) {
+function buildBlankStarterDraft() {
+  return {
+    fillGrid: createGrid(null),
+    labelGrid: createGrid(null),
+    supportGrid: createGrid(null),
+    regions: [],
+    portalBindings: [],
+  };
+}
+
+async function buildStarterRoomPackage(space) {
   const templateProject = await loadChewTemplateRoom();
-  return buildRoomPackage(templateProject, space, draft, {
+  return buildRoomPackage(templateProject, space, buildBlankStarterDraft(), {
     chewMessage: dlg("inst-room-file").text || ROOM_STARTER_CHEW_MESSAGE_DEFAULT,
   });
 }
@@ -1192,6 +1202,14 @@ function buildFallbackClaimToken() {
     manifest?.owner?.displayName || manifest?.roomId || "unknown-owner",
   ];
   return fallbackParts.join(":");
+}
+
+function shouldIgnoreStoredGuestState(spaceId) {
+  if (!guestParam || spaceId !== manifest?.entrySpaceId) {
+    return false;
+  }
+
+  return manifest?.questPhase === "awaiting-key" || manifest?.questPhase === "awaiting-room";
 }
 
 function normalizeStoredGrid(value) {
@@ -1260,6 +1278,11 @@ function sanitizeDraft(space, draft) {
 }
 
 function loadDraft(space) {
+  if (shouldIgnoreStoredGuestState(space.id)) {
+    window.localStorage.removeItem(draftStorageKey(space.id));
+    return null;
+  }
+
   const raw = window.localStorage.getItem(draftStorageKey(space.id));
   if (!raw) {
     return null;
@@ -1325,6 +1348,11 @@ function getDraft(space) {
 }
 
 function loadSceneOverride(spaceId) {
+  if (shouldIgnoreStoredGuestState(spaceId)) {
+    window.localStorage.removeItem(sceneOverrideStorageKey(spaceId));
+    return null;
+  }
+
   const raw = window.localStorage.getItem(sceneOverrideStorageKey(spaceId));
   if (!raw) {
     return null;
@@ -3700,12 +3728,11 @@ function runQuestPhase() {
 
 async function downloadRoomFile() {
   const space = spaceById.get(manifest.entrySpaceId) || getCurrentSpace();
-  const draft = getDraft(space);
   const guestName = manifest.owner?.displayName || manifest.roomId || "guest";
   const fileName = `${guestName}.Room`;
 
   try {
-    const roomPackage = await buildStarterRoomPackage(space, draft);
+    const roomPackage = await buildStarterRoomPackage(space);
     downloadBlob(
       new Blob([JSON.stringify(roomPackage, null, 2)], {
         type: "application/x-icyanimation+json",
