@@ -825,7 +825,7 @@ async function refreshTreefortIfChanged() {
 // Gum is a 27×37 cropped sprite positioned independently from the 1024×240 box sprites.
 
 const ELEV_FRAME_MS = 1000 / 12;
-const ELEV_SPEED = 480;
+const ELEV_SPEED = 384;
 const GUM_WALK_SPEED = 160;
 const GUM_HOME_X = 577;
 const GUM_W = 27;
