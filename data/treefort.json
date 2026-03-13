@@ -41,9 +41,18 @@
     {
       "id": "guest-002",
       "type": "guest",
-      "status": "vacant",
+      "status": "occupied",
       "segment": 0,
-      "slot": "b"
+      "slot": "b",
+      "name": "smallhatboi's Room",
+      "moveInDate": "2026-03-13",
+      "discordUserId": "437711717653282816",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask smallhatboi!",
+        "passphraseHash": "2f5046d219b03143ddcca0ebe5475ecc3ac04224db151cc215c4f3b9eab68598",
+        "encryptedHref": "tRy8XffcibKbzz4K4Qdr3QHFEmXV2xeg4MtXqyH77XjOHksG7uzgODUGnuReSacc1t1RM0cZg7nB0au2GvRyE4buQQ=="
+      }
     },
     {
       "id": "guest-003",
