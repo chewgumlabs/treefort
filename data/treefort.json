@@ -25,18 +25,9 @@
     {
       "id": "guest-001",
       "type": "guest",
-      "status": "occupied",
+      "status": "vacant",
       "segment": 0,
-      "slot": "a",
-      "name": "shanecurry's Room",
-      "moveInDate": "2026-03-13",
-      "discordUserId": "1028469253139075152",
-      "access": {
-        "mode": "knock",
-        "hint": "Ask shanecurry!",
-        "passphraseHash": "d6d31104d1be4c4d10489ef907c229ab0aa157d057975e728406010142f5f79c",
-        "encryptedHref": "ZMjpxAFB9wBJKmKJfhTK+CZ5vE/eJmWUUXM05sDHR8iDgmIVKQKNqzkv0GQqx9pnmcBh4xTZHWEK16bDcWH6kcSIew=="
-      }
+      "slot": "a"
     },
     {
       "id": "guest-002",
