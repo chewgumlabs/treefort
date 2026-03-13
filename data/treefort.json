@@ -25,9 +25,18 @@
     {
       "id": "guest-001",
       "type": "guest",
-      "status": "vacant",
+      "status": "occupied",
       "segment": 0,
-      "slot": "a"
+      "slot": "a",
+      "name": "shanecurry's Room",
+      "moveInDate": "2026-03-13",
+      "discordUserId": "1028469253139075152",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask shanecurry!",
+        "passphraseHash": "8fe1e9c2870c5ff63a105c3dcfa609e191b1c9432525630b11cfc410f5a6fdf9",
+        "encryptedHref": "Ebt0cPTXfms41Bwfar0vGyQ82FEhwQW2pASr+7eUWmbdyCrJLIdDL1Gy5mdXEMgNZPTYOzCADpCBtgImnLYdC/4oOA=="
+      }
     },
     {
       "id": "guest-002",
