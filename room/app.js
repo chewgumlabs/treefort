@@ -76,6 +76,8 @@ const ROOM_BACKGROUND_NOTICE_DEFAULT = "ROOM COLORS ARE NOT EDITABLE";
 const ROOM_WARNING_DEFAULT =
   "Your tags will be saved, and your colors will be shown on the background side in IcyAnimation for reference. Changes to that reference do not carry back into the bedroom.";
 const SUPPORT_MESSAGE_DEFAULT = "... Support lines let a pet know where it can stand and walk. If one arrives...";
+const ROOM_IMPORT_ACCEPT = ".room,.icy";
+const SPECIALKEY_IMPORT_ACCEPT = ".specialkey";
 let DIALOG = {};
 function dlg(id) { return DIALOG[id] || {}; }
 function dlgText(id, vars) {
@@ -498,8 +500,57 @@ function getCurrentSpace() {
   return spaceById.get(activeSpaceId) || spaceById.get(manifest.entrySpaceId);
 }
 
+function getQuestImportMode() {
+  if (manifest?.questPhase === "awaiting-key") {
+    return "specialkey";
+  }
+  return "room";
+}
+
+function getQuestImportHint(space) {
+  if (!manifest?.questPhase || space.id !== manifest.entrySpaceId) {
+    return "";
+  }
+  if (manifest.questPhase === "awaiting-key") {
+    return "Turn in your .SpecialKey. The import button is waiting for a key file right now.";
+  }
+  if (manifest.questPhase === "awaiting-room") {
+    return "Import your .Room or .icy drawing to reveal this room.";
+  }
+  return "";
+}
+
+function syncImportButton() {
+  const importMode = getQuestImportMode();
+  const accept = importMode === "specialkey" ? SPECIALKEY_IMPORT_ACCEPT : ROOM_IMPORT_ACCEPT;
+  if (importRoomInput) {
+    importRoomInput.accept = accept;
+  }
+  if (importRoomButton) {
+    const label = importMode === "specialkey" ? "Import SpecialKey" : "Import room";
+    importRoomButton.setAttribute("aria-label", label);
+    importRoomButton.title = label;
+  }
+}
+
+function openImportPicker(mode = "auto") {
+  if (!importRoomInput) {
+    return;
+  }
+  const importMode = mode === "auto" ? getQuestImportMode() : mode;
+  importRoomInput.accept = importMode === "specialkey" ? SPECIALKEY_IMPORT_ACCEPT : ROOM_IMPORT_ACCEPT;
+  importRoomInput.click();
+}
+
+function isImageDataUrl(value) {
+  return typeof value === "string" && /^data:image\/[a-z0-9.+-]+;base64,/i.test(value);
+}
+
 function resetStatus(space) {
-  if (space.revealState === "locked") {
+  const questImportHint = getQuestImportHint(space);
+  if (questImportHint && authorMode === "view") {
+    stageStatusDefault = questImportHint;
+  } else if (space.revealState === "locked") {
     stageStatusDefault = `${space.title} is locked.`;
   } else if (space.revealState === "undrawn") {
     if (authorMode === "paint") {
@@ -568,6 +619,12 @@ function getSelectionMessage(space, draft) {
 }
 
 function syncMessage(space) {
+  const questImportHint = getQuestImportHint(space);
+  if (questImportHint && authorMode === "view") {
+    setMessage(questImportHint);
+    return;
+  }
+
   const draft = getDraft(space);
   const selectionMessage = getSelectionMessage(space, draft);
   if (selectionMessage) {
@@ -1021,11 +1078,31 @@ function canExportRoomPackage(space) {
 }
 
 function draftStorageKey(spaceId) {
-  return `${LOCAL_DRAFT_PREFIX}${manifest.roomId}:${spaceId}`;
+  return `${LOCAL_DRAFT_PREFIX}${manifest.roomId}${getGuestStorageScope()}:${spaceId}`;
 }
 
 function sceneOverrideStorageKey(spaceId) {
-  return `${SCENE_OVERRIDE_STORAGE_PREFIX}${manifest.roomId}:${spaceId}`;
+  return `${SCENE_OVERRIDE_STORAGE_PREFIX}${manifest.roomId}${getGuestStorageScope()}:${spaceId}`;
+}
+
+function getGuestStorageScope() {
+  if (!guestParam) {
+    return "";
+  }
+
+  if (typeof manifest?.claimToken === "string" && manifest.claimToken) {
+    return `:${manifest.claimToken}`;
+  }
+
+  return `:${buildFallbackClaimToken()}`;
+}
+
+function buildFallbackClaimToken() {
+  const fallbackParts = [
+    manifest?.updatedAt || "unknown-date",
+    manifest?.owner?.displayName || manifest?.roomId || "unknown-owner",
+  ];
+  return fallbackParts.join(":");
 }
 
 function normalizeStoredGrid(value) {
@@ -2482,6 +2559,10 @@ async function renderIcyProject(project, expectedSpaceId) {
 }
 
 async function handleImportedRoomFile(file) {
+  if (manifest.questPhase === "awaiting-key") {
+    throw new Error("Turn in your .SpecialKey before importing a room drawing.");
+  }
+
   const space = getCurrentSpace();
   const fileName = file.name.toLowerCase();
   const isRoomPackage = fileName.endsWith(".room");
@@ -2861,7 +2942,7 @@ exportRoomButton?.addEventListener("click", () => {
 });
 
 importRoomButton?.addEventListener("click", () => {
-  importRoomInput?.click();
+  openImportPicker();
 });
 
 importRoomInput?.addEventListener("change", async (event) => {
@@ -2877,6 +2958,7 @@ importRoomInput?.addEventListener("change", async (event) => {
       await handleSpecialKeyImport(file);
     } catch (error) {
       setStatus(error.message);
+      setMessage(error.message);
     }
     return;
   }
@@ -2916,6 +2998,7 @@ importRoomInput?.addEventListener("change", async (event) => {
     }
   } catch (error) {
     setStatus(error.message);
+    setMessage(error.message);
   }
 });
 
@@ -3092,6 +3175,7 @@ function renderActiveSpace() {
     sceneEyebrow.textContent =
       space.id === manifest.entrySpaceId ? "Main room" : space.revealState === "drawn" ? "Hidden room" : "Undrawn room";
   }
+  syncImportButton();
   renderNavigation(space);
 
   // Sticker book + snapshot buttons track current space
@@ -3294,18 +3378,35 @@ function downloadParchment() {
   URL.revokeObjectURL(url);
 }
 
+function questPromptStorageKey(tag) {
+  const claimScope = manifest?.claimToken || buildFallbackClaimToken();
+  return `treefort-quest-prompt:${manifest.roomId}:${claimScope}:${tag}`;
+}
+
+function shouldPauseForQuest(tag) {
+  const key = questPromptStorageKey(tag);
+  if (sessionStorage.getItem(key) === "1") {
+    return false;
+  }
+  sessionStorage.setItem(key, "1");
+  return true;
+}
+
 function runQuestPhase() {
   if (!manifest.questPhase) return;
 
   const name = manifest.owner?.displayName || "friend";
 
   if (manifest.questPhase === "awaiting-key") {
+    if (!shouldPauseForQuest("awaiting-key")) {
+      return;
+    }
     showDialog({
       speaker: "Gum", frames: GUM_HAPPY,
       text: dlgText("quest-awaiting-key", { name }),
       actions: [
         { label: dlg("quest-awaiting-key").actions?.[0] || "Take the Parchment", onClick: downloadParchment },
-        { label: dlg("quest-awaiting-key").actions?.[1] || "I have a Key!", onClick: () => importRoomInput?.click() },
+        { label: "Turn in my .SpecialKey", onClick: () => openImportPicker("specialkey") },
         { label: dlg("quest-awaiting-key").actions?.[2] || "Icy?", onClick: () => {
           showDialog({
             speaker: "Gum", frames: GUM_HAPPY,
@@ -3322,12 +3423,15 @@ function runQuestPhase() {
   }
 
   if (manifest.questPhase === "awaiting-room") {
+    if (!shouldPauseForQuest("awaiting-room")) {
+      return;
+    }
     showDialog({
       speaker: "Gum", frames: GUM_SAD,
       text: dlg("quest-awaiting-room").text || "Your room is empty.",
       actions: [
         { label: dlg("quest-awaiting-room").actions?.[0] || "Take the Room file", onClick: () => downloadRoomFile() },
-        { label: dlg("quest-awaiting-room").actions?.[1] || "I drew my Room!", onClick: () => importRoomInput?.click() },
+        { label: "Import my .Room", onClick: () => openImportPicker("room") },
         { label: dlg("quest-awaiting-room").actions?.[2] || "Not yet", onClick: () => {} },
       ],
     });
@@ -3355,6 +3459,9 @@ function runQuestPhase() {
 
     // Bonus room — Glitchby intro (wave 1 only, advancement handles the rest)
     if (space && space.id === "bonus" && wave === 1) {
+      if (!shouldPauseForQuest("bonus-wave-1")) {
+        return;
+      }
       showDialog({
         speaker: "G̷l̶i̵t̸c̷h̶b̵y", frames: GLITCHBY,
         text: dlgText("quest-bonus-intro", { _glitchSeed: 1 }),
@@ -3368,6 +3475,9 @@ function runQuestPhase() {
 
     // Main room — wave 1 intro (advancement handles 2+)
     if (space && space.id === "main" && wave === 1) {
+      if (!shouldPauseForQuest("decorating-main-wave-1")) {
+        return;
+      }
       showDialog({
         speaker: "Gum", frames: GUM_HAPPY,
         text: dlgText("quest-decorating-main", { name: manifest.owner?.displayName || "friend" }),
@@ -3448,16 +3558,21 @@ async function handleSpecialKeyImport(file) {
     throw new Error("That doesn't look like a SpecialKey from Icy.");
   }
 
-  // Store the key art as-is (displayed at 2x via CSS pixelated scaling)
-  if (keyData.keyArt) {
-    manifest.keyArt = keyData.keyArt;
+  if (!isImageDataUrl(keyData?.keyArt)) {
+    throw new Error("That SpecialKey is missing the actual key drawing.");
   }
+
+  // Store the key art as-is (displayed at 2x via CSS pixelated scaling)
+  manifest.keyArt = keyData.keyArt;
 
   // Advance quest
   manifest.questPhase = "awaiting-room";
   manifest.activeWave = 0;
   await saveGuestRoom();
   persistSoloManifest();
+  syncImportButton();
+  setStatus("SpecialKey accepted. Import a .Room or .icy file next.");
+  setMessage("SpecialKey accepted. Gum has your key. Import a .Room or .icy file next.");
 
   const name = manifest.owner?.displayName || "friend";
   showDialog({
@@ -3809,6 +3924,11 @@ function clearGuestAuth() {
   sessionStorage.removeItem(GUEST_AUTH_STORAGE_KEY);
 }
 
+function resetGuestScopedCaches() {
+  draftBySpaceId.clear();
+  sceneOverrideBySpaceId.clear();
+}
+
 function setGuestStatusMessage(text) {
   if (!text) return;
   setStatus(text);
@@ -3840,6 +3960,7 @@ function applyGuestReadonlyState({ needsAuth = guestNeedsAuth, message = "", cle
 
   if (clearAuthState) {
     clearGuestAuth();
+    resetGuestScopedCaches();
   }
 
   if (authorMode !== "view") {
@@ -3850,7 +3971,11 @@ function applyGuestReadonlyState({ needsAuth = guestNeedsAuth, message = "", cle
 
   const space = manifest && spaceById.size ? getCurrentSpace() : null;
   if (space) {
-    refreshAuthoringUI(space);
+    if (clearAuthState) {
+      renderActiveSpace();
+    } else {
+      refreshAuthoringUI(space);
+    }
   }
 
   setGuestStatusMessage(message);
@@ -3863,6 +3988,8 @@ function applyGuestEditableState(message = "") {
 
   const space = manifest && spaceById.size ? getCurrentSpace() : null;
   if (space) {
+    resetGuestScopedCaches();
+    renderActiveSpace();
     refreshAuthoringUI(space);
   }
 
@@ -4385,6 +4512,9 @@ async function main() {
   }
 
   manifest = await response.json();
+  if (guestParam && (!manifest.claimToken || typeof manifest.claimToken !== "string")) {
+    manifest.claimToken = buildFallbackClaimToken();
+  }
 
   // Load dialog text
   try {

@@ -236,6 +236,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
 
   // Provision the room
   const today = new Date().toISOString().split("T")[0];
+  const claimToken = crypto.randomUUID();
   const roomHref = `./room/?guest=${slot.id}`;
   const hash = await sha256Hex(normalized);
   const encrypted = await encryptString(roomHref, normalized);
@@ -255,7 +256,7 @@ async function handleClaimRoom(env, interaction, userId, username) {
   // Reused guest slots must overwrite any stale file from a previous occupant.
   const roomPath = `rooms/${slot.id}/data.json`;
   const existingRoomFile = await fetchGitHubFile(env, roomPath);
-  const roomData = JSON.stringify(guestRoomTemplate(slot.id, username, today), null, 2) + "\n";
+  const roomData = JSON.stringify(guestRoomTemplate(slot.id, username, today, claimToken), null, 2) + "\n";
   const roomCommitResult = await commitGitHubFile(
     env,
     roomPath,
@@ -547,12 +548,13 @@ function discordReply(content) {
   return jsonResponse(200, { type: 4, data: { content, flags: 64 } });
 }
 
-function guestRoomTemplate(guestId, guestName, today) {
+function guestRoomTemplate(guestId, guestName, today, claimToken) {
   return {
     schema: "treefort-semantic-room",
     schemaVersion: 1,
     roomId: guestId,
     roomEngine: "semantic-scene-v2",
+    claimToken,
     owner: { displayName: guestName, siteUrl: "./" },
     presentation: { eyebrow: "Guest room", title: `${guestName}'s Room`, description: "A guest room in the Treefort." },
     updatedAt: today,

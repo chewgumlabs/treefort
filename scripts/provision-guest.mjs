@@ -78,6 +78,7 @@ const roomHref = `./room/?guest=${slot.id}`;
 const hash = await sha256Hex(normalized);
 const encrypted = await encryptString(roomHref, normalized);
 const today = new Date().toISOString().split("T")[0];
+const claimToken = crypto.randomUUID();
 
 // Update the slot
 slot.status = "occupied";
@@ -95,12 +96,13 @@ const roomDir = resolve(ROOMS_DIR, slot.id);
 rmSync(roomDir, { recursive: true, force: true });
 mkdirSync(roomDir, { recursive: true });
 
-const defaultRoom = guestRoomTemplate(slot.id, kidName, today);
+const defaultRoom = guestRoomTemplate(slot.id, kidName, today, claimToken);
 
-function guestRoomTemplate(guestId, guestName, date) {
+function guestRoomTemplate(guestId, guestName, date, roomClaimToken) {
   return {
     schema: "treefort-semantic-room", schemaVersion: 1, roomId: guestId,
     roomEngine: "semantic-scene-v2",
+    claimToken: roomClaimToken,
     owner: { displayName: guestName, siteUrl: "./" },
     presentation: { eyebrow: "Guest room", title: `${guestName}'s Room`, description: "A guest room in the Treefort." },
     updatedAt: date,
