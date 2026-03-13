@@ -1540,6 +1540,101 @@ function defaultInteractionForType(type, blob) {
   };
 }
 
+function normalizeInteractionSnapshot(snapshot) {
+  if (!snapshot) {
+    return null;
+  }
+
+  const type = snapshot.type === "secret-room" ? "secret-room" : snapshot.type === "art" ? "art" : "words";
+  return {
+    type,
+    title: typeof snapshot.title === "string" ? snapshot.title : "",
+    description: typeof snapshot.description === "string" ? snapshot.description : "",
+    noteText: type === "words" && typeof snapshot.noteText === "string" ? snapshot.noteText : "",
+    targetSpaceId: type === "secret-room" && typeof snapshot.targetSpaceId === "string" ? snapshot.targetSpaceId : "",
+    artSrc: type === "art" && typeof snapshot.artSrc === "string" ? snapshot.artSrc : "",
+  };
+}
+
+function getSavedInteractionSnapshot(region) {
+  const savedInteraction = region?.interaction && typeof region.interaction === "object" ? region.interaction : null;
+  if (!savedInteraction) {
+    return null;
+  }
+
+  return normalizeInteractionSnapshot({
+    type: savedInteraction.type,
+    title: savedInteraction.title || "",
+    description: region?.description || "",
+    noteText: savedInteraction.noteText || "",
+    targetSpaceId: savedInteraction.targetSpaceId || "",
+    artSrc: savedInteraction.artSrc || "",
+  });
+}
+
+function getPendingInteractionSnapshot(selectedBlob, region, secretRoomOptions) {
+  if (!selectedBlob) {
+    return { valid: false, meaningful: false, snapshot: null };
+  }
+
+  const type = selectedInteractionType;
+  const rawTitle = interactionTitleInput?.value.replace(/\s+/g, " ").trim() || "";
+  const description = interactionDescriptionInput?.value.trim() || "";
+  const noteText = interactionNoteInput?.value.trim() || "";
+  const defaultTitle = defaultInteractionForType(type, selectedBlob).title;
+  const targetSpaceId =
+    type === "secret-room"
+      ? interactionSecretTarget?.value || region?.interaction?.targetSpaceId || secretRoomOptions[0]?.id || ""
+      : "";
+  const artSrc = type === "art" ? pendingArtSrc || region?.interaction?.artSrc || "" : "";
+
+  let valid = true;
+  let meaningful = false;
+
+  if (type === "secret-room") {
+    valid = selectedBlob.labelId === "poster-secret" && Boolean(targetSpaceId);
+    meaningful = valid;
+  } else if (type === "art") {
+    valid = Boolean(artSrc);
+    meaningful = Boolean(artSrc);
+  } else {
+    meaningful = Boolean(rawTitle || description || noteText || region?.interaction);
+  }
+
+  if (!valid || !meaningful) {
+    return { valid, meaningful, snapshot: null };
+  }
+
+  return {
+    valid,
+    meaningful,
+    snapshot: normalizeInteractionSnapshot({
+      type,
+      title: rawTitle || defaultTitle,
+      description,
+      noteText,
+      targetSpaceId,
+      artSrc,
+    }),
+  };
+}
+
+function syncInteractiveActionState(space) {
+  if (!space || authorMode !== "interactive") {
+    return;
+  }
+
+  const draft = getDraft(space);
+  const { selectedBlob, region } = getInteractiveSelection(space, draft);
+  const secretRoomOptions = getSecretRoomOptions(space);
+  const savedSnapshot = getSavedInteractionSnapshot(region);
+  const { valid, snapshot } = getPendingInteractionSnapshot(selectedBlob, region, secretRoomOptions);
+  const hasChanges = Boolean(snapshot) && JSON.stringify(snapshot) !== JSON.stringify(savedSnapshot);
+
+  saveInteractionButton.disabled = !valid || !hasChanges;
+  clearInteractionButton.disabled = !savedSnapshot;
+}
+
 function drawFillGrid(fillGrid) {
   fillContext.clearRect(0, 0, manifest.stage.width, manifest.stage.height);
 
@@ -1910,8 +2005,6 @@ function syncInteractiveForm(space) {
   interactionTitleInput.disabled = false;
   interactionDescriptionInput.disabled = false;
   interactionSecretTarget.disabled = effectiveType !== "secret-room" || secretRoomLocked || noTargets;
-  saveInteractionButton.disabled = effectiveType === "secret-room" && (secretRoomLocked || noTargets);
-  clearInteractionButton.disabled = !savedInteraction;
 
   interactionTitleInput.value = savedInteraction?.title || "";
   interactionDescriptionInput.value = region?.description || savedInteraction?.body || "";
@@ -1936,6 +2029,7 @@ function syncInteractiveForm(space) {
   }
 
   dismissNoteOverlay();
+  syncInteractiveActionState(space);
 }
 
 function upsertInteractiveRegion(space, draft, blob, interaction) {
@@ -3107,9 +3201,18 @@ function syncNoteGlitch() {
   noteGlitchOverlay.textContent = raw ? zalgoify(raw) : "";
 }
 
+function syncInteractiveActionStateForCurrentSpace() {
+  syncInteractiveActionState(getCurrentSpace());
+}
+
+interactionTitleInput?.addEventListener("input", syncInteractiveActionStateForCurrentSpace);
+interactionDescriptionInput?.addEventListener("input", syncInteractiveActionStateForCurrentSpace);
+interactionSecretTarget?.addEventListener("change", syncInteractiveActionStateForCurrentSpace);
+
 interactionNoteInput?.addEventListener("input", () => {
   syncNoteGlitch();
   if (selectedInteractionType === "words") updateNotePreview();
+  syncInteractiveActionStateForCurrentSpace();
 });
 
 gifOverlay?.addEventListener("click", dismissGifOverlay);
@@ -3134,12 +3237,14 @@ artGifInput?.addEventListener("change", async () => {
       artUploadButton.textContent = "Replace GIF";
     }
     setStatus("GIF loaded. Hit Save to keep it.");
+    syncInteractiveActionStateForCurrentSpace();
   } catch (error) {
     pendingArtSrc = null;
     setStatus(error.message);
     if (artUploadStatus) {
       artUploadStatus.textContent = error.message;
     }
+    syncInteractiveActionStateForCurrentSpace();
   }
 });
 

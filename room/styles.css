@@ -958,9 +958,18 @@ body.debug-regions .region-hit {
 }
 
 #interaction-save-window.is-sinister #clear-interaction-button {
-  background: #5c1d28 !important;
+  background: #b03a54 !important;
   color: #f4f1e8 !important;
-  border-color: #3d1219 !important;
+  border-color: #7a2639 !important;
+}
+
+#interaction-save-window.is-sinister .interactive-actions .room-link:disabled {
+  background: #5b555b !important;
+  color: #d5cacf !important;
+  border-color: #413c41 !important;
+  opacity: 0.7;
+  filter: none;
+  box-shadow: none;
 }
 
 .interactive-field-window .window-bar {
@@ -1073,14 +1082,24 @@ body.debug-regions .region-hit {
   font-size: 9px;
   line-height: 0.92;
   overflow: visible;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, opacity 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+}
+
+.interactive-actions .room-link:disabled {
+  opacity: 0.45;
+  filter: saturate(0.35) grayscale(0.2);
+  box-shadow: none;
 }
 
 #save-interaction-button {
   background: #8fc7e8;
+  color: #123243;
 }
 
 #clear-interaction-button {
-  background: #e8a0a0;
+  background: #ef7a72;
+  color: #331111;
+  border-color: #ba5348;
 }
 
 .critic-dialog,
