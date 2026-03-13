@@ -512,25 +512,72 @@ function getQuestImportHint(space) {
     return "";
   }
   if (manifest.questPhase === "awaiting-key") {
-    return "Turn in your .SpecialKey. The import button is waiting for a key file right now.";
+    return "Take your Parchment with Export. When Icy gives you back a .SpecialKey, turn it in with Import.";
   }
   if (manifest.questPhase === "awaiting-room") {
-    return "Import your .Room or .icy drawing to reveal this room.";
+    return "Take your .Room file with Export, draw in Icy, then bring the finished .Room back with Import.";
   }
   return "";
 }
 
 function syncImportButton() {
   const importMode = getQuestImportMode();
-  const accept = importMode === "specialkey" ? SPECIALKEY_IMPORT_ACCEPT : ROOM_IMPORT_ACCEPT;
+  const accept = importMode === "specialkey"
+    ? SPECIALKEY_IMPORT_ACCEPT
+    : guestParam
+      ? ".room"
+      : ROOM_IMPORT_ACCEPT;
   if (importRoomInput) {
     importRoomInput.accept = accept;
   }
   if (importRoomButton) {
-    const label = importMode === "specialkey" ? "Import SpecialKey" : "Import room";
+    const label = importMode === "specialkey" ? "Turn in SpecialKey" : "Import Room";
     importRoomButton.setAttribute("aria-label", label);
     importRoomButton.title = label;
   }
+}
+
+function getQuestExportAction(space) {
+  if (space.id !== manifest?.entrySpaceId) {
+    return null;
+  }
+  if (manifest?.questPhase === "awaiting-key") {
+    return {
+      label: "Take Parchment",
+      onClick: () => {
+        downloadParchment();
+        setMessage("Take this Parchment to Icy. When the key is done, turn in the .SpecialKey with Import.");
+      },
+    };
+  }
+  if (manifest?.questPhase === "awaiting-room") {
+    return {
+      label: "Take Room file",
+      onClick: () => {
+        downloadRoomFile();
+        setMessage("Draw your room in Icy, then bring the finished .Room back here with Import.");
+      },
+    };
+  }
+  return null;
+}
+
+function syncExportButton(space) {
+  if (!exportRoomButton) {
+    return;
+  }
+
+  const questAction = getQuestExportAction(space);
+  if (questAction) {
+    exportRoomButton.disabled = false;
+    exportRoomButton.setAttribute("aria-label", questAction.label);
+    exportRoomButton.title = questAction.label;
+    return;
+  }
+
+  exportRoomButton.disabled = !canExportRoomPackage(space);
+  exportRoomButton.setAttribute("aria-label", "Export room");
+  exportRoomButton.title = "Export room";
 }
 
 function openImportPicker(mode = "auto") {
@@ -538,7 +585,11 @@ function openImportPicker(mode = "auto") {
     return;
   }
   const importMode = mode === "auto" ? getQuestImportMode() : mode;
-  importRoomInput.accept = importMode === "specialkey" ? SPECIALKEY_IMPORT_ACCEPT : ROOM_IMPORT_ACCEPT;
+  importRoomInput.accept = importMode === "specialkey"
+    ? SPECIALKEY_IMPORT_ACCEPT
+    : guestParam
+      ? ".room"
+      : ROOM_IMPORT_ACCEPT;
   importRoomInput.click();
 }
 
@@ -2142,9 +2193,7 @@ function refreshAuthoringUI(space) {
   if (authorMode !== "view") {
     hideHoverTitle();
   }
-  if (exportRoomButton) {
-    exportRoomButton.disabled = !canExportRoomPackage(space);
-  }
+  syncExportButton(space);
 
   toolButtons.forEach((button) => {
     const tool = button.dataset.tool;
@@ -2567,6 +2616,9 @@ async function handleImportedRoomFile(file) {
   const fileName = file.name.toLowerCase();
   const isRoomPackage = fileName.endsWith(".room");
   const isIcyProject = fileName.endsWith(".icy");
+  if (guestParam && !isRoomPackage) {
+    throw new Error("Guest rooms import finished .Room files only.");
+  }
   if (!isRoomPackage && !isIcyProject) {
     throw new Error("Treefort only imports .room or .icy files.");
   }
@@ -2935,6 +2987,11 @@ navTreefortButton?.addEventListener("click", async () => {
 });
 
 exportRoomButton?.addEventListener("click", () => {
+  const questAction = getQuestExportAction(getCurrentSpace());
+  if (questAction) {
+    questAction.onClick();
+    return;
+  }
   if (exportRoomButton.disabled) {
     return;
   }
@@ -3430,9 +3487,20 @@ function runQuestPhase() {
       speaker: "Gum", frames: GUM_SAD,
       text: dlg("quest-awaiting-room").text || "Your room is empty.",
       actions: [
-        { label: dlg("quest-awaiting-room").actions?.[0] || "Take the Room file", onClick: () => downloadRoomFile() },
+        {
+          label: dlg("quest-awaiting-room").actions?.[0] || "Take the Room file",
+          onClick: () => {
+            downloadRoomFile();
+            setMessage("Draw your room in Icy, then bring the finished .Room back here with Import.");
+          },
+        },
         { label: "Import my .Room", onClick: () => openImportPicker("room") },
-        { label: dlg("quest-awaiting-room").actions?.[2] || "Not yet", onClick: () => {} },
+        {
+          label: dlg("quest-awaiting-room").actions?.[2] || "Not yet",
+          onClick: () => {
+            setMessage("Take your .Room file with Export whenever you're ready, then bring the finished .Room back with Import.");
+          },
+        },
       ],
     });
     return;
@@ -3571,8 +3639,8 @@ async function handleSpecialKeyImport(file) {
   await saveGuestRoom();
   persistSoloManifest();
   syncImportButton();
-  setStatus("SpecialKey accepted. Import a .Room or .icy file next.");
-  setMessage("SpecialKey accepted. Gum has your key. Import a .Room or .icy file next.");
+  setStatus("SpecialKey accepted. Take your .Room file with Export, then bring the finished .Room back with Import.");
+  setMessage("SpecialKey accepted. Gum has your key. Take your .Room file with Export, then bring the finished .Room back with Import.");
 
   const name = manifest.owner?.displayName || "friend";
   showDialog({
@@ -3583,8 +3651,19 @@ async function handleSpecialKeyImport(file) {
         speaker: "Gum", frames: GUM_SAD,
         text: dlg("quest-key-then-room").text || "Your room is empty.",
         actions: [
-          { label: dlg("quest-key-then-room").actions?.[0] || "Take the Room file", onClick: () => downloadRoomFile() },
-          { label: dlg("quest-key-then-room").actions?.[1] || "Not yet", onClick: () => {} },
+          {
+            label: dlg("quest-key-then-room").actions?.[0] || "Take the Room file",
+            onClick: () => {
+              downloadRoomFile();
+              setMessage("Draw your room in Icy, then bring the finished .Room back here with Import.");
+            },
+          },
+          {
+            label: dlg("quest-key-then-room").actions?.[1] || "Not yet",
+            onClick: () => {
+              setMessage("Take your .Room file with Export whenever you're ready, then bring the finished .Room back with Import.");
+            },
+          },
         ],
       });
     }}],
