@@ -799,6 +799,8 @@ function primeWorldStartPosition() {
 }
 
 let cachedManifest = null;
+let elevatorAssetsPromise = Promise.resolve();
+let elevatorAssetsReady = false;
 
 async function refreshTreefortIfChanged() {
   if (document.hidden) {
@@ -829,6 +831,23 @@ const GUM_HOME_X = 577;
 const GUM_W = 27;
 const GUM_H = 37;
 const ROPE_TOP_OFFSET = 55;
+const ELEVATOR_BOX_SPRITES = [
+  "elevatorAB_UL",
+  "elevatorAB_OL",
+  "elevatorCD_UL",
+  "elevatorCD_OL",
+  "elevator_ropeExtension",
+];
+const ELEVATOR_GUM_SPRITES = [
+  "arrive",
+  "atDoor",
+  "eyesUp",
+  "eyesDown",
+  "walk01",
+  "walk02",
+  "walk03",
+  "walk04",
+];
 
 let elev = {
   y: 0, targetY: 0, floor: 0, _targetFloor: 0,
@@ -852,6 +871,44 @@ function elevFloorPrefix(f) { return (f & 1) ? "CD" : "AB"; }
 
 function elevSrc(name) { return `./assets/tree/elevator/${name}.png`; }
 function gumSrc(name) { return `./assets/tree/elevator/gum/${name}.png`; }
+
+function preloadImage(src) {
+  const image = new Image();
+  image.decoding = "async";
+  image.src = src;
+
+  if (image.complete) {
+    if (typeof image.decode === "function") {
+      return image.decode().catch(() => {});
+    }
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    image.addEventListener("load", () => {
+      if (typeof image.decode === "function") {
+        image.decode().catch(() => {}).finally(resolve);
+      } else {
+        resolve();
+      }
+    }, { once: true });
+    image.addEventListener("error", resolve, { once: true });
+  });
+}
+
+function preloadElevatorAssets() {
+  const sources = [
+    ...ELEVATOR_BOX_SPRITES.map((name) => elevSrc(name)),
+    ...ELEVATOR_GUM_SPRITES.map((name) => gumSrc(name)),
+  ];
+
+  return Promise.all(sources.map(preloadImage)).then(() => {
+    elevatorAssetsReady = true;
+    if (elevEls.layer) {
+      elevEls.layer.style.visibility = "visible";
+    }
+  });
+}
 
 function elevFloorStops() {
   return [
@@ -880,6 +937,7 @@ function elevNearestDoor(floor, gumX) {
 function createElevator(trunkWrap) {
   const layer = document.createElement("div");
   layer.className = "elevator-layer";
+  layer.style.visibility = "hidden";
 
   const rope = document.createElement("div");
   rope.className = "elevator-rope";
@@ -921,14 +979,8 @@ function createElevator(trunkWrap) {
   trunkWrap.appendChild(layer);
 
   elevEls = { layer, rope, ul, gum, ol, cageHit };
-
-  // Preload all sprites to prevent flash on first swap
-  ["elevatorAB_UL", "elevatorAB_OL", "elevatorCD_UL", "elevatorCD_OL", "elevator_ropeExtension"].forEach(n => {
-    new Image().src = elevSrc(n);
-  });
-  ["arrive", "atDoor", "eyesUp", "eyesDown", "walk01", "walk02", "walk03", "walk04"].forEach(n => {
-    new Image().src = gumSrc(n);
-  });
+  elevatorAssetsReady = false;
+  elevatorAssetsPromise = preloadElevatorAssets();
 
   elev.floor = 0;
   elev._targetFloor = 0;
@@ -1397,7 +1449,7 @@ async function init() {
     renderSky();
     renderTree();
     applyTreefortCopy(manifest.treefort);
-    await waitForTreeImages();
+    await Promise.all([waitForTreeImages(), elevatorAssetsPromise]);
     sizeWorld();
     renderDoors(manifest.doors, manifest.treefort.guestRules);
     renderStickerBooks(manifest.stickerBooks);
