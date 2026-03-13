@@ -56,9 +56,18 @@
     {
       "id": "guest-003",
       "type": "guest",
-      "status": "vacant",
+      "status": "occupied",
       "segment": 0,
-      "slot": "c"
+      "slot": "c",
+      "name": "shellylynnx's Room",
+      "moveInDate": "2026-03-13",
+      "discordUserId": "359308533335982090",
+      "access": {
+        "mode": "knock",
+        "hint": "Ask shellylynnx!",
+        "passphraseHash": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+        "encryptedHref": "qWTnreu3j2DKcFjSPvAd0YDJC2vt3TDXT6HYZ3CTJkw+krim8A86GFYI5XKZfrOlPgOjs05JtZ4cf/lJ0iU9NyZ5zw=="
+      }
     },
     {
       "id": "guest-004",
