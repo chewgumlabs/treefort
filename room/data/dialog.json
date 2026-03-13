@@ -49,11 +49,11 @@
     ]
   },
   "quest-awaiting-room": {
-    "text": "I'm afraid I have some bad news... Your room is totally empty. No bed, no rug, not even a floor. If you could take this .Room file to Icy and draw your own floor, rug, and your own bed, then you can come back and color it all here!",
+    "text": "I'm afraid I have some bad news... Your room was empty, so Chew sketched you a starter room inside this .Room file. You can keep it, redraw parts of it, or erase the whole thing and start over in Icy. Then come back and color it all here!",
     "actions": [
       "I'll take the Room file.",
       "I already drew my Bed!",
-      "I shouldn't be here."
+      "Not yet"
     ]
   },
   "quest-decorating-main": {
@@ -82,10 +82,10 @@
     ]
   },
   "quest-key-then-room": {
-    "text": "Your room is still empty. I don't mean empty like you can draw in it, I mean it's a soulless void without even a floor. Take a .Room file to Icy and return with at least a Floor to lay on.",
+    "text": "Your room is still empty here, so Chew packed a starter room into this .Room file for you. Keep it, redraw it, or erase it and start from scratch in Icy, then come back with the finished .Room.",
     "actions": [
       "I'll take the Room file",
-      "Sorry"
+      "Not yet"
     ]
   },
   "wave-main-complete": {
@@ -286,7 +286,7 @@
     "text": "Oh wow! Who gave you a Magic Parchment? These are for drawing Keys! Be careful. And remember you can only draw your Key once. Your key is forever."
   },
   "inst-room-file": {
-    "text": "Holy crap Gum gave you a room? That's crazy. Dang. Wait you didn't give him your Key did you? Never mind. Best to just focus on the floor. And bed!"
+    "text": "Huh. Gum gave you a Room? Fine. I sketched you a starter room. Keep it if you like, redraw it if you don't, or erase the whole thing and make your own."
   },
   "inst-bonus-room": {
     "text": "Who gave you this? You shouldn't have this."

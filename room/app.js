@@ -75,9 +75,12 @@ const ROOM_META_SCHEMA_VERSION = 1;
 const ROOM_BACKGROUND_NOTICE_DEFAULT = "ROOM COLORS ARE NOT EDITABLE";
 const ROOM_WARNING_DEFAULT =
   "Your tags will be saved, and your colors will be shown on the background side in IcyAnimation for reference. Changes to that reference do not carry back into the bedroom.";
+const ROOM_STARTER_CHEW_MESSAGE_DEFAULT =
+  "I sketched you a starter room. Keep what you like, redraw what you don't, or erase it and start from scratch.";
 const SUPPORT_MESSAGE_DEFAULT = "... Support lines let a pet know where it can stand and walk. If one arrives...";
 const ROOM_IMPORT_ACCEPT = ".room,.icy";
 const SPECIALKEY_IMPORT_ACCEPT = ".specialkey";
+const CHEW_TEMPLATE_ROOM_URL = "./data/chew-template.room";
 let DIALOG = {};
 function dlg(id) { return DIALOG[id] || {}; }
 function dlgText(id, vars) {
@@ -327,6 +330,7 @@ let activeLabelLayer = "objects";
 let selectedInteractionType = "art";
 let selectedInteractiveRegionId = null;
 let pendingArtSrc = null;
+let chewTemplateRoomPromise = null;
 let pointerStroke = null;
 
 const icyTintCanvas = document.createElement("canvas");
@@ -515,7 +519,7 @@ function getQuestImportHint(space) {
     return "Take your Parchment with Export. When Icy gives you back a .SpecialKey, turn it in with Import.";
   }
   if (manifest.questPhase === "awaiting-room") {
-    return "Take your .Room file with Export, draw in Icy, then bring the finished .Room back with Import.";
+    return "Take your starter .Room with Export. Chew already sketched a room you can keep, redraw, or erase, then bring the finished .Room back with Import.";
   }
   return "";
 }
@@ -554,8 +558,7 @@ function getQuestExportAction(space) {
     return {
       label: "Take Room file",
       onClick: () => {
-        downloadRoomFile();
-        setMessage("Draw your room in Icy, then bring the finished .Room back here with Import.");
+        void downloadRoomFile();
       },
     };
   }
@@ -998,12 +1001,12 @@ function cloneFrameLike(frameLike, fallbackId) {
   };
 }
 
-function buildTreefortRoomMeta(space, draft) {
+function buildTreefortRoomMeta(space, draft, options = {}) {
   const exportedAt = new Date().toISOString();
   const regions = Array.isArray(draft.regions) ? draft.regions : space.regions || [];
   const portalBindings = Array.isArray(draft.portalBindings) ? draft.portalBindings : space.portalBindings || [];
 
-  return {
+  const roomMeta = {
     schema: ROOM_META_SCHEMA,
     schemaVersion: ROOM_META_SCHEMA_VERSION,
     roomId: manifest.roomId,
@@ -1044,9 +1047,37 @@ function buildTreefortRoomMeta(space, draft) {
     },
     exportedAt,
   };
+
+  if (typeof options.chewMessage === "string" && options.chewMessage.trim()) {
+    roomMeta.chewMessage = options.chewMessage.trim();
+  }
+
+  return roomMeta;
 }
 
-function buildRoomPackage(project, space, draft) {
+async function loadChewTemplateRoom() {
+  if (!chewTemplateRoomPromise) {
+    chewTemplateRoomPromise = fetch(CHEW_TEMPLATE_ROOM_URL, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Could not load Chew's starter room (${response.status}).`);
+        }
+        const project = await response.json();
+        if (project?.app !== "IcyAnimation") {
+          throw new Error("Chew's starter room is not a valid IcyAnimation project.");
+        }
+        return project;
+      })
+      .catch((error) => {
+        chewTemplateRoomPromise = null;
+        throw error;
+      });
+  }
+
+  return cloneJson(await chewTemplateRoomPromise);
+}
+
+function buildRoomPackage(project, space, draft, options = {}) {
   const { frameIndex } = getIcyFrame(project);
   const frame = cloneFrameLike(project.frames[frameIndex], "room-frame-1");
   const backgroundClip = cloneFrameLike(getIcyBackgroundClip(project, frameIndex), "treefort-background-1");
@@ -1100,8 +1131,15 @@ function buildRoomPackage(project, space, draft) {
     frames: [frame],
     backgroundClips: [backgroundClip],
     backgroundAssignments: [backgroundClip.id],
-    treefortRoom: buildTreefortRoomMeta(space, draft),
+    treefortRoom: buildTreefortRoomMeta(space, draft, options),
   };
+}
+
+async function buildStarterRoomPackage(space, draft) {
+  const templateProject = await loadChewTemplateRoom();
+  return buildRoomPackage(templateProject, space, draft, {
+    chewMessage: dlg("inst-room-file").text || ROOM_STARTER_CHEW_MESSAGE_DEFAULT,
+  });
 }
 
 function downloadBlob(blob, fileName) {
@@ -3590,20 +3628,19 @@ function runQuestPhase() {
     }
     showDialog({
       speaker: "Gum", frames: GUM_SAD,
-      text: dlg("quest-awaiting-room").text || "Your room is empty.",
+      text: dlg("quest-awaiting-room").text || "Chew already started a room for you.",
       actions: [
         {
           label: dlg("quest-awaiting-room").actions?.[0] || "Take the Room file",
           onClick: () => {
-            downloadRoomFile();
-            setMessage("Draw your room in Icy, then bring the finished .Room back here with Import.");
+            void downloadRoomFile();
           },
         },
         { label: "Import my .Room", onClick: () => openImportPicker("room") },
         {
           label: dlg("quest-awaiting-room").actions?.[2] || "Not yet",
           onClick: () => {
-            setMessage("Take your .Room file with Export whenever you're ready, then bring the finished .Room back with Import.");
+            setMessage("Take your starter .Room with Export whenever you're ready. Chew already sketched a room you can keep, redraw, or erase, then bring the finished .Room back with Import.");
           },
         },
       ],
@@ -3661,29 +3698,26 @@ function runQuestPhase() {
   }
 }
 
-function downloadRoomFile(options = {}) {
-  const guestName = manifest.owner.displayName;
-  const roomFile = {
-    version: 1,
-    app: "TreeFort",
-    questPhase: options.questPhase || "awaiting-room",
-    guestId: manifest.roomId,
-    guestName,
-    createdAt: new Date().toISOString(),
-    canvas: { width: 256, height: 192 },
-    instructions: options.instructions || dlg("inst-room-file").text || "Draw your room.",
-  };
-  if (options.chewMessage) roomFile.chewMessage = options.chewMessage;
-  if (options.chewMood) roomFile.chewMood = options.chewMood;
-  const blob = new Blob([JSON.stringify(roomFile, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${guestName}.Room`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+async function downloadRoomFile() {
+  const space = spaceById.get(manifest.entrySpaceId) || getCurrentSpace();
+  const draft = getDraft(space);
+  const guestName = manifest.owner?.displayName || manifest.roomId || "guest";
+  const fileName = `${guestName}.Room`;
+
+  try {
+    const roomPackage = await buildStarterRoomPackage(space, draft);
+    downloadBlob(
+      new Blob([JSON.stringify(roomPackage, null, 2)], {
+        type: "application/x-icyanimation+json",
+      }),
+      fileName,
+    );
+    setStatus(`Downloaded ${fileName}.`);
+    setMessage("Chew started you with a room sketch. Keep it, redraw it, or erase it in Icy, then bring the finished .Room back with Import.");
+  } catch (error) {
+    setStatus(error.message);
+    setMessage(error.message);
+  }
 }
 
 function downloadBonusRoomFile() {
@@ -3744,8 +3778,8 @@ async function handleSpecialKeyImport(file) {
   await saveGuestRoom();
   persistSoloManifest();
   syncImportButton();
-  setStatus("SpecialKey accepted. Take your .Room file with Export, then bring the finished .Room back with Import.");
-  setMessage("SpecialKey accepted. Gum has your key. Take your .Room file with Export, then bring the finished .Room back with Import.");
+  setStatus("SpecialKey accepted. Take your starter .Room with Export, then bring the finished .Room back with Import.");
+  setMessage("SpecialKey accepted. Gum has your key. Take your starter .Room with Export. Chew already sketched a room you can keep, redraw, or erase, then bring the finished .Room back with Import.");
 
   const name = manifest.owner?.displayName || "friend";
   showDialog({
@@ -3754,19 +3788,18 @@ async function handleSpecialKeyImport(file) {
     actions: [{ label: dlg("quest-key-accepted").actions?.[0] || "What?", onClick: () => {
       showDialog({
         speaker: "Gum", frames: GUM_SAD,
-        text: dlg("quest-key-then-room").text || "Your room is empty.",
+        text: dlg("quest-key-then-room").text || "Chew already started a room for you.",
         actions: [
           {
             label: dlg("quest-key-then-room").actions?.[0] || "Take the Room file",
             onClick: () => {
-              downloadRoomFile();
-              setMessage("Draw your room in Icy, then bring the finished .Room back here with Import.");
+              void downloadRoomFile();
             },
           },
           {
             label: dlg("quest-key-then-room").actions?.[1] || "Not yet",
             onClick: () => {
-              setMessage("Take your .Room file with Export whenever you're ready, then bring the finished .Room back with Import.");
+              setMessage("Take your starter .Room with Export whenever you're ready. Chew already sketched a room you can keep, redraw, or erase, then bring the finished .Room back with Import.");
             },
           },
         ],
