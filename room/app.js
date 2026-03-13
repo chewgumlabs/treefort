@@ -2417,6 +2417,7 @@ function setAuthorMode(nextMode) {
   const space = getCurrentSpace();
   refreshAuthoringUI(space);
   updateFeedback(space);
+  maybeShowDecoratingMainIntro(space, nextMode);
 }
 
 function buildPaintSwatches() {
@@ -3620,6 +3621,29 @@ function shouldPauseForQuest(tag) {
   return true;
 }
 
+function maybeShowDecoratingMainIntro(space, nextMode) {
+  if (!manifest || manifest.questPhase !== "decorating") {
+    return;
+  }
+  if (!space || space.id !== manifest.entrySpaceId || space.revealState !== "drawn") {
+    return;
+  }
+  if (!["paint", "labels"].includes(nextMode)) {
+    return;
+  }
+  if (getActiveWaveForSpace(space) !== 1) {
+    return;
+  }
+  if (!shouldPauseForQuest("decorating-main-wave-1")) {
+    return;
+  }
+  showDialog({
+    speaker: "Gum", frames: GUM_HAPPY,
+    text: dlgText("quest-decorating-main", { name: manifest.owner?.displayName || "friend" }),
+    actions: [{ label: dlg("quest-decorating-main").actions?.[0] || "Let's go!", onClick: () => {} }],
+  });
+}
+
 function runQuestPhase() {
   if (!manifest.questPhase) return;
 
@@ -3711,17 +3735,6 @@ function runQuestPhase() {
       return;
     }
 
-    // Main room — wave 1 intro (advancement handles 2+)
-    if (space && space.id === "main" && wave === 1) {
-      if (!shouldPauseForQuest("decorating-main-wave-1")) {
-        return;
-      }
-      showDialog({
-        speaker: "Gum", frames: GUM_HAPPY,
-        text: dlgText("quest-decorating-main", { name: manifest.owner?.displayName || "friend" }),
-        actions: [{ label: dlg("quest-decorating-main").actions?.[0] || "Let's go!", onClick: () => {} }],
-      });
-    }
     return;
   }
 }
