@@ -4,6 +4,7 @@
   "treefort": {
     "title": "The giant tree with everyone's door on it.",
     "lede": "Each door represents a kid's own room. The tree is the shared hub.",
+    "stumpNote": "The stump waits for future rooms and little things left behind.",
     "guestRules": {
       "maxGuests": 12,
       "stayDays": 7,
@@ -24,50 +25,23 @@
     {
       "id": "guest-001",
       "type": "guest",
-      "status": "occupied",
+      "status": "vacant",
       "segment": 0,
-      "slot": "a",
-      "name": "icys_utopia's Room",
-      "moveInDate": "2026-03-12",
-      "discordUserId": "690020142045724691",
-      "access": {
-        "mode": "stalk",
-        "hint": "Ask icys_utopia!",
-        "passphraseHash": "5bb65bb2635517bf0382d1baa5d32a898159938418b9c07ab40929c9e417c342",
-        "encryptedHref": "l26qqnTuGpUuYT7x4HceV3BEv8TC36p0OprXV7udxp03LsAilNLaMts7DvqT6l0Bz8AF5tflMQZ0H7IAs2jO/wp/og=="
-      }
+      "slot": "a"
     },
     {
       "id": "guest-002",
       "type": "guest",
-      "status": "occupied",
+      "status": "vacant",
       "segment": 0,
-      "slot": "b",
-      "name": "shanecurry's Room",
-      "moveInDate": "2026-03-12",
-      "discordUserId": "1028469253139075152",
-      "access": {
-        "mode": "stalk",
-        "hint": "Ask shanecurry!",
-        "passphraseHash": "b1a8bcadfe255d19dd5f9c8f71ca2ba0d072a2adc27651bf2610f7f758f4607b",
-        "encryptedHref": "DsgonFOkO8Bg2LyTRj6rOOzGYOTFcMUMpRcN/Gpla7p8SiZEaAj7FdorIoL8omWfYOjMvktyarCrbsfeEw6r1pUE4A=="
-      }
+      "slot": "b"
     },
     {
       "id": "guest-003",
       "type": "guest",
-      "status": "occupied",
+      "status": "vacant",
       "segment": 0,
-      "slot": "c",
-      "name": "shellylynnx's Room",
-      "moveInDate": "2026-03-13",
-      "discordUserId": "359308533335982090",
-      "access": {
-        "mode": "stalk",
-        "hint": "Ask shellylynnx!",
-        "passphraseHash": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-        "encryptedHref": "qWTnreu3j2DKcFjSPvAd0YDJC2vt3TDXT6HYZ3CTJkw+krim8A86GFYI5XKZfrOlPgOjs05JtZ4cf/lJ0iU9NyZ5zw=="
-      }
+      "slot": "c"
     },
     {
       "id": "guest-004",

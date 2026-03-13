@@ -151,6 +151,14 @@ function assertSnowflake(value, label) {
   }
 }
 
+function assertOptionalSnowflake(value, label) {
+  if (value === undefined) {
+    return;
+  }
+
+  assertSnowflake(value, label);
+}
+
 function hashPassphrase(passphrase) {
   return createHash("sha256").update(passphrase.trim().toLowerCase()).digest("hex");
 }
@@ -526,6 +534,107 @@ export function validatePublicTreefortManifest(manifest) {
       assertUrlish(door.href, `${label}.href`);
     }
   });
+}
+
+function validateHubGuestRules(rules, label) {
+  assertObject(rules, label);
+  assertNumber(rules.maxGuests, `${label}.maxGuests`, 1, 1000);
+  assertNumber(rules.stayDays, `${label}.stayDays`, 1, 365);
+  assertNumber(rules.warnDay, `${label}.warnDay`, 1, rules.stayDays);
+  assertNumber(rules.readonlyDay, `${label}.readonlyDay`, rules.warnDay, rules.stayDays);
+  assertNumber(rules.exportDay, `${label}.exportDay`, rules.readonlyDay, rules.stayDays);
+  assertNumber(rules.maxSizeBytes, `${label}.maxSizeBytes`, 1, 1024 * 1024 * 1024);
+}
+
+function validateHubGuestDoor(door, label) {
+  assertString(door.status, `${label}.status`);
+  if (!new Set(["vacant", "occupied"]).has(door.status)) {
+    fail(`${label}.status must be "vacant" or "occupied"`);
+  }
+
+  if (door.status === "occupied") {
+    validateTextLength(door.name, `${label}.name`, DEFAULT_ROOM_LIMITS.maxTitleLength);
+    assertDateString(door.moveInDate, `${label}.moveInDate`);
+    assertSnowflake(door.discordUserId, `${label}.discordUserId`);
+    assertObject(door.access, `${label}.access`);
+    assertString(door.access.mode, `${label}.access.mode`);
+    if (!new Set(["knock", "stalk", "lock"]).has(door.access.mode)) {
+      fail(`${label}.access.mode must be knock, stalk, or lock`);
+    }
+    assertString(door.access.hint, `${label}.access.hint`);
+    assertHex(door.access.passphraseHash, `${label}.access.passphraseHash`);
+    assertString(door.access.encryptedHref, `${label}.access.encryptedHref`);
+    return;
+  }
+
+  assertOptionalString(door.name, `${label}.name`);
+  assertOptionalDateString(door.moveInDate, `${label}.moveInDate`);
+  assertOptionalSnowflake(door.discordUserId, `${label}.discordUserId`);
+  if (door.access !== undefined) {
+    fail(`${label}.access must be omitted for a vacant guest door`);
+  }
+}
+
+function validateHubPermanentDoor(door, label) {
+  validateTextLength(door.name, `${label}.name`, DEFAULT_ROOM_LIMITS.maxTitleLength);
+  assertObject(door.access, `${label}.access`);
+  assertString(door.access.mode, `${label}.access.mode`);
+  if (!DOOR_MODES.has(door.access.mode)) {
+    fail(`${label}.access.mode must be one of: ${[...DOOR_MODES].join(", ")}`);
+  }
+}
+
+export function validateTreefortRuntimeManifest(manifest) {
+  assertObject(manifest, "treefort runtime manifest");
+  assertNumber(manifest.version, "treefort runtime version", 1, 1000);
+
+  if (manifest.instance === "hub") {
+    assertObject(manifest.treefort, "treefort runtime copy");
+    assertString(manifest.treefort.title, "treefort runtime title");
+    assertString(manifest.treefort.lede, "treefort runtime lede");
+    assertString(manifest.treefort.stumpNote, "treefort runtime stump note");
+    validateHubGuestRules(manifest.treefort.guestRules, "treefort runtime guestRules");
+    validateTreefortGateways(manifest.treefort.gateways, "treefort runtime gateways");
+
+    if (manifest.stickerBooks !== undefined) {
+      assertArray(manifest.stickerBooks, "treefort runtime stickerBooks");
+      manifest.stickerBooks.forEach((entry, index) => {
+        const label = `treefort runtime stickerBook ${index}`;
+        assertObject(entry, label);
+        validateTextLength(entry.name, `${label}.name`, DEFAULT_ROOM_LIMITS.maxTitleLength);
+        assertString(entry.guestId, `${label}.guestId`);
+        assertNumber(entry.slot, `${label}.slot`, 0, 9999);
+      });
+    }
+
+    assertArray(manifest.doors, "treefort runtime doors");
+    manifest.doors.forEach((door, index) => {
+      const label = `treefort runtime door ${index}`;
+      assertObject(door, label);
+      assertString(door.id, `${label}.id`);
+      assertString(door.type, `${label}.type`);
+      assertNumber(door.segment, `${label}.segment`, 0, 1000);
+      assertString(door.slot, `${label}.slot`);
+      if (!new Set(["a", "b", "c", "d"]).has(door.slot)) {
+        fail(`${label}.slot must be one of: a, b, c, d`);
+      }
+
+      if (door.type === "guest") {
+        validateHubGuestDoor(door, label);
+        return;
+      }
+
+      if (door.type === "permanent") {
+        validateHubPermanentDoor(door, label);
+        return;
+      }
+
+      fail(`${label}.type must be "guest" or "permanent"`);
+    });
+    return;
+  }
+
+  validatePublicTreefortManifest(manifest);
 }
 
 export function validateRoomManifest(manifest) {

@@ -251,7 +251,28 @@ async function handleClaimRoom(env, interaction, userId, username) {
     encryptedHref: encrypted,
   };
 
-  // Commit updated manifest
+  // Create or replace room data matching the editor's semantic-room schema.
+  // Reused guest slots must overwrite any stale file from a previous occupant.
+  const roomPath = `rooms/${slot.id}/data.json`;
+  const existingRoomFile = await fetchGitHubFile(env, roomPath);
+  const roomData = JSON.stringify(guestRoomTemplate(slot.id, username, today), null, 2) + "\n";
+  const roomCommitResult = await commitGitHubFile(
+    env,
+    roomPath,
+    roomData,
+    existingRoomFile?.sha,
+    `${existingRoomFile ? "Reset" : "Create"} ${slot.id} room data`,
+  );
+
+  if (!roomCommitResult.ok) {
+    return discordReply(
+      `Your door was assigned to ${slot.id}, but the room file could not be prepared. Ask the tree owner to reset ${slot.id}.`,
+    );
+  }
+
+  // Commit updated manifest after the room file is ready.
+  // If this step fails, the slot stays vacant even though the blank file exists,
+  // which is safer than assigning a door to stale room data.
   const newManifest = JSON.stringify(manifest, null, 2) + "\n";
   const commitResult = await commitGitHubFile(
     env,
@@ -264,10 +285,6 @@ async function handleClaimRoom(env, interaction, userId, username) {
   if (!commitResult.ok) {
     return discordReply("Something went wrong provisioning your room. Try again in a minute.");
   }
-
-  // Create room data matching the editor's semantic-room schema
-  const roomData = JSON.stringify(guestRoomTemplate(slot.id, username, today), null, 2);
-  await commitGitHubFile(env, `rooms/${slot.id}/data.json`, roomData, null, `Create ${slot.id} room data`);
 
   return discordReply(
     `**Your room is ready!** 🏠\n\n` +
@@ -365,16 +382,17 @@ async function handleEvictRoom(env, interaction, userId) {
   // Delete room data
   const roomFile = await fetchGitHubFile(env, `rooms/${targetId}/data.json`);
   if (roomFile) {
-    await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/rooms/${targetId}/data.json`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "treefort-worker",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message: `Delete ${targetId} room data`, sha: roomFile.sha, branch: env.GITHUB_BRANCH }),
-    });
+    const deleteResult = await deleteGitHubFile(
+      env,
+      `rooms/${targetId}/data.json`,
+      roomFile.sha,
+      `Delete ${targetId} room data`,
+    );
+    if (!deleteResult.ok) {
+      return discordReply(
+        `Evicted **${oldName}** from \`${targetId}\`, but the old room file could not be deleted. Reset ${targetId} before reusing it.`,
+      );
+    }
   }
 
   return discordReply(`Evicted **${oldName}** from \`${targetId}\`. Room is now vacant.`);
@@ -471,6 +489,23 @@ async function commitGitHubFile(env, path, content, existingSha, message) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+  });
+}
+
+async function deleteGitHubFile(env, path, sha, message) {
+  return fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/${path}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "treefort-worker",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message,
+      sha,
+      branch: env.GITHUB_BRANCH,
+    }),
   });
 }
 

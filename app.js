@@ -721,12 +721,12 @@ knockForm.addEventListener("submit", async (event) => {
   }
 
   const passphrase = passphraseInput.value.trim().toLowerCase();
+  const hash = await sha256Hex(passphrase);
 
   // Level 2: encrypted href — the URL itself is the secret
   if (room.access.encryptedHref) {
     try {
       const href = await decryptString(room.access.encryptedHref, passphrase);
-      const hash = await sha256Hex(passphrase);
       sessionStorage.setItem("treefort-guest-auth", JSON.stringify({ guestId: room.id, passphraseHash: hash }));
       sessionStorage.setItem("treefort-last-door", room.id);
       window.location.href = href;
@@ -738,7 +738,8 @@ knockForm.addEventListener("submit", async (event) => {
   }
 
   // Level 1 fallback: hash compare with plaintext href
-  if ((await sha256Hex(passphrase)) === room.access.passphraseHash) {
+  if (hash === room.access.passphraseHash) {
+    sessionStorage.setItem("treefort-guest-auth", JSON.stringify({ guestId: room.id, passphraseHash: hash }));
     sessionStorage.setItem("treefort-last-door", room.id);
     window.location.href = room.href;
     return;

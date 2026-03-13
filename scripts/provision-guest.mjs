@@ -9,7 +9,7 @@
  * encrypts their door, and creates their room directory.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
 const [, , kidName, passphrase] = process.argv;
@@ -92,9 +92,8 @@ slot.access = {
 
 // Create the room directory with an empty data file
 const roomDir = resolve(ROOMS_DIR, slot.id);
-if (!existsSync(roomDir)) {
-  mkdirSync(roomDir, { recursive: true });
-}
+rmSync(roomDir, { recursive: true, force: true });
+mkdirSync(roomDir, { recursive: true });
 
 const defaultRoom = guestRoomTemplate(slot.id, kidName, today);
 
@@ -185,7 +184,7 @@ writeFileSync(resolve(roomDir, "data.json"), JSON.stringify(defaultRoom, null, 2
 writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n");
 
 console.log(`Guest room provisioned!`);
-console.log(`  Slot:       ${slot.id} (floor ${slot.floor})`);
+console.log(`  Slot:       ${slot.id}`);
 console.log(`  Name:       ${slot.name}`);
 console.log(`  Move-in:    ${today}`);
 console.log(`  Passphrase: ${passphrase} (never stored)`);

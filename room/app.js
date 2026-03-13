@@ -222,12 +222,15 @@ const OBJECT_LABEL_BRUSHES = LABEL_BRUSHES.filter((brush) => brush.id !== "solid
 const SUPPORT_LABEL_BRUSHES = [ERASE_ID, "solid"];
 const VALID_OBJECT_LABEL_IDS = new Set(OBJECT_LABEL_BRUSHES.map((brush) => brush.id));
 const VALID_SUPPORT_LABEL_IDS = new Set(["solid"]);
+const GUEST_AUTH_STORAGE_KEY = "treefort-guest-auth";
 
 let manifest = null;
 let guestParam = null;
 let isResident = false;
 let isSolo = false;
 let isGuestReadonly = false;
+let guestNeedsAuth = false;
+let guestDoorRecord = null;
 
 const RESIDENT_OVERLAY_COLORS = [
   "rgba(69, 176, 98, 0.62)",
@@ -3723,6 +3726,7 @@ function exportStickerBook() {
 
 const WORKER_SAVE_URL = "https://treefort-save.chewgum.workers.dev/save";
 const guestSaveButton = document.getElementById("guest-save-button");
+const guestAuthButton = document.getElementById("guest-auth-button");
 
 function gridToFillPatches(grid) {
   const byColor = new Map();
@@ -3789,6 +3793,170 @@ function compileManifestForSave() {
   return compiled;
 }
 
+function readGuestAuth() {
+  try {
+    return JSON.parse(sessionStorage.getItem(GUEST_AUTH_STORAGE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeGuestAuth(guestId, passphraseHash) {
+  sessionStorage.setItem(GUEST_AUTH_STORAGE_KEY, JSON.stringify({ guestId, passphraseHash }));
+}
+
+function clearGuestAuth() {
+  sessionStorage.removeItem(GUEST_AUTH_STORAGE_KEY);
+}
+
+function setGuestStatusMessage(text) {
+  if (!text) return;
+  setStatus(text);
+  setMessage(text);
+}
+
+function refreshGuestControls() {
+  const showGuestSave = Boolean(guestParam && !isGuestReadonly);
+  const showGuestAuth = Boolean(guestParam && guestNeedsAuth);
+
+  if (guestSaveButton) {
+    guestSaveButton.classList.toggle("hidden", !showGuestSave);
+  }
+
+  if (guestAuthButton) {
+    guestAuthButton.classList.toggle("hidden", !showGuestAuth);
+    guestAuthButton.disabled = false;
+    guestAuthButton.textContent = "Unlock Editing";
+  }
+
+  if (doorLockToggle) {
+    doorLockToggle.classList.toggle("hidden", !showGuestSave);
+  }
+}
+
+function applyGuestReadonlyState({ needsAuth = guestNeedsAuth, message = "", clearAuthState = false } = {}) {
+  guestNeedsAuth = needsAuth;
+  isGuestReadonly = true;
+
+  if (clearAuthState) {
+    clearGuestAuth();
+  }
+
+  if (authorMode !== "view") {
+    authorMode = "view";
+  }
+
+  refreshGuestControls();
+
+  const space = manifest && spaceById.size ? getCurrentSpace() : null;
+  if (space) {
+    refreshAuthoringUI(space);
+  }
+
+  setGuestStatusMessage(message);
+}
+
+function applyGuestEditableState(message = "") {
+  guestNeedsAuth = false;
+  isGuestReadonly = false;
+  refreshGuestControls();
+
+  const space = manifest && spaceById.size ? getCurrentSpace() : null;
+  if (space) {
+    refreshAuthoringUI(space);
+  }
+
+  setGuestStatusMessage(message);
+}
+
+async function fetchGuestDoorRecord(guestId) {
+  if (guestDoorRecord?.id === guestId) {
+    return guestDoorRecord;
+  }
+
+  const res = await fetch("../data/treefort.json", { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Couldn't verify door access right now (${res.status}).`);
+  }
+
+  const treefortData = await res.json();
+  const door = treefortData.doors?.find((candidate) => candidate.id === guestId) || null;
+  if (!door) {
+    throw new Error("Couldn't find this guest room in the tree manifest.");
+  }
+
+  guestDoorRecord = door;
+  return door;
+}
+
+function promptGuestEditUnlock(text = "If this is your room, type your passphrase to unlock editing and saving.") {
+  showDialog({
+    speaker: "Gum",
+    frames: GUM_HAPPY,
+    text,
+    input: { placeholder: "door passphrase", maxLength: 64 },
+    actions: [
+      {
+        label: "Unlock Editing",
+        onClick: (value) => {
+          void unlockGuestEditing(value);
+        },
+      },
+      {
+        label: "Just Visit",
+        onClick: () => {},
+      },
+    ],
+  });
+}
+
+async function unlockGuestEditing(rawPassphrase) {
+  if (!guestParam) return;
+
+  const passphrase = String(rawPassphrase || "").trim().toLowerCase();
+  if (!passphrase) {
+    promptGuestEditUnlock("Type your passphrase if you want to edit and save this room.");
+    return;
+  }
+
+  if (guestAuthButton) {
+    guestAuthButton.disabled = true;
+    guestAuthButton.textContent = "Checking...";
+  }
+
+  try {
+    const door = await fetchGuestDoorRecord(guestParam);
+    if (door.type !== "guest" || door.status !== "occupied" || !door.access?.passphraseHash) {
+      throw new Error("This guest room can't be unlocked for editing right now.");
+    }
+
+    const passphraseHash = await sha256Hex(passphrase);
+    if (passphraseHash !== door.access.passphraseHash) {
+      applyGuestReadonlyState({
+        needsAuth: true,
+        message: "That passphrase didn't match this room.",
+        clearAuthState: true,
+      });
+      promptGuestEditUnlock("That passphrase didn't match this room. Try again if you own this door.");
+      return;
+    }
+
+    writeGuestAuth(guestParam, passphraseHash);
+    if (door.access.mode) {
+      currentDoorMode = door.access.mode;
+      updateDoorLockUI();
+    }
+    applyGuestEditableState("Editing unlocked. You can save your room again.");
+  } catch (error) {
+    setGuestStatusMessage(error.message || "Couldn't unlock editing right now.");
+  } finally {
+    if (guestAuthButton) {
+      guestAuthButton.disabled = false;
+      guestAuthButton.textContent = "Unlock Editing";
+    }
+  }
+}
+
 let _guestSaveDirty = false;
 let _guestSaving = false;
 const AUTOSAVE_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
@@ -3805,8 +3973,15 @@ async function saveGuestRoom() {
   if (!guestId) return;
   if (_guestSaving) return;
 
-  const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
-  if (!auth || auth.guestId !== guestId) return;
+  const auth = readGuestAuth();
+  if (!auth || auth.guestId !== guestId) {
+    applyGuestReadonlyState({
+      needsAuth: true,
+      message: "Enter your passphrase to unlock editing before saving.",
+      clearAuthState: true,
+    });
+    return;
+  }
 
   _guestSaving = true;
   if (guestSaveButton) {
@@ -3822,14 +3997,30 @@ async function saveGuestRoom() {
       body: JSON.stringify({ guestId, passphraseHash: auth.passphraseHash, roomData }),
     });
 
-    const result = await res.json();
+    const result = await res.json().catch(() => ({}));
     if (res.ok && result.ok) {
       _guestSaveDirty = false;
       if (guestSaveButton) guestSaveButton.textContent = "Saved to Tree";
     } else {
+      const errorMessage = result.error || `Save failed (${res.status}).`;
+      if (res.status === 401) {
+        applyGuestReadonlyState({
+          needsAuth: true,
+          message: "Your passphrase needs to be entered again before this room can save.",
+          clearAuthState: true,
+        });
+      } else if (res.status === 403 && (errorMessage === "Room is read-only" || errorMessage === "Guest stay has expired")) {
+        applyGuestReadonlyState({
+          needsAuth: false,
+          message: errorMessage,
+        });
+      } else {
+        setGuestStatusMessage(errorMessage);
+      }
       if (guestSaveButton) guestSaveButton.textContent = "Save to Tree";
     }
   } catch {
+    setGuestStatusMessage("Couldn't reach the save service right now.");
     if (guestSaveButton) guestSaveButton.textContent = "Save to Tree";
   } finally {
     _guestSaving = false;
@@ -3840,6 +4031,12 @@ async function saveGuestRoom() {
 // Manual click
 if (guestSaveButton) {
   guestSaveButton.addEventListener("click", () => void saveGuestRoom());
+}
+
+if (guestAuthButton) {
+  guestAuthButton.addEventListener("click", () => {
+    promptGuestEditUnlock();
+  });
 }
 
 // Auto-save: periodic check
@@ -3916,19 +4113,41 @@ async function toggleDoorMode() {
   // Call Worker
   doorLockToggle.disabled = true;
   try {
-    const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
-    if (!auth || auth.guestId !== guestParam) return;
+    const auth = readGuestAuth();
+    if (!auth || auth.guestId !== guestParam) {
+      applyGuestReadonlyState({
+        needsAuth: true,
+        message: "Enter your passphrase again before changing your door.",
+        clearAuthState: true,
+      });
+      return;
+    }
     const res = await fetch(WORKER_DOOR_MODE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ guestId: guestParam, passphraseHash: auth.passphraseHash, mode: newMode }),
     });
+    const result = await res.json().catch(() => ({}));
     if (res.ok) {
       currentDoorMode = newMode;
       updateDoorLockUI();
+      guestDoorRecord = guestDoorRecord && guestDoorRecord.id === guestParam
+        ? { ...guestDoorRecord, access: { ...guestDoorRecord.access, mode: newMode } }
+        : guestDoorRecord;
+    } else if (res.status === 401) {
+      applyGuestReadonlyState({
+        needsAuth: true,
+        message: "Enter your passphrase again before changing your door.",
+        clearAuthState: true,
+      });
+    } else {
+      setGuestStatusMessage(result.error || `Couldn't change the door right now (${res.status}).`);
     }
-  } catch { /* silently fail */ }
-  doorLockToggle.disabled = false;
+  } catch {
+    setGuestStatusMessage("Couldn't change the door right now.");
+  } finally {
+    doorLockToggle.disabled = false;
+  }
 }
 
 if (doorLockToggle) {
@@ -4129,22 +4348,20 @@ async function checkGuestExpiry(guestId) {
       actions: [{ label: dlg("expiry-warning").actions?.[0] || "Okay", onClick: () => {} }],
     });
   } else if (phase === "readonly") {
-    isGuestReadonly = true;
-    if (authorMode !== "view") {
-      authorMode = "view";
-    }
-    refreshAuthoringUI(getCurrentSpace());
+    applyGuestReadonlyState({
+      needsAuth: false,
+      message: dlg("expiry-readonly").text || "Your room is now read-only.",
+    });
     showDialog({
       speaker: "Gum", frames: GUM_SAD,
       text: dlg("expiry-readonly").text || "Your room is now read-only.",
       actions: [{ label: dlg("expiry-readonly").actions?.[0] || "I understand", onClick: () => {} }],
     });
   } else if (phase === "export" || phase === "expired") {
-    isGuestReadonly = true;
-    if (authorMode !== "view") {
-      authorMode = "view";
-    }
-    refreshAuthoringUI(getCurrentSpace());
+    applyGuestReadonlyState({
+      needsAuth: false,
+      message: dlg("expiry-export").text || "Your stay has ended.",
+    });
     showDialog({
       speaker: "Gum", frames: GUM_SAD,
       text: dlg("expiry-export").text || "Your stay has ended.",
@@ -4181,9 +4398,10 @@ async function main() {
 
   // Visitors without valid auth are read-only
   if (guestParam) {
-    const auth = JSON.parse(sessionStorage.getItem("treefort-guest-auth") || "null");
+    const auth = readGuestAuth();
     if (!auth || auth.guestId !== guestParam) {
       isGuestReadonly = true;
+      guestNeedsAuth = true;
       authorMode = "view";
     }
   }
@@ -4226,23 +4444,15 @@ async function main() {
   writeLocationSpaceId(readLocationSpaceId(), true);
   renderShell();
 
-  // Show save button for guest rooms, publish button for solo/resident
-  if (guestParam && !isGuestReadonly && guestSaveButton) {
-    guestSaveButton.classList.remove("hidden");
-  }
+  refreshGuestControls();
 
   // Show door lock toggle for guests
   if (guestParam && !isGuestReadonly && doorLockToggle) {
     try {
-      const tfRes = await fetch("../data/treefort.json", { cache: "no-store" });
-      if (tfRes.ok) {
-        const tfData = await tfRes.json();
-        const door = tfData.doors?.find((d) => d.id === guestParam);
-        if (door?.access?.mode) currentDoorMode = door.access.mode;
-      }
+      const door = await fetchGuestDoorRecord(guestParam);
+      if (door?.access?.mode) currentDoorMode = door.access.mode;
     } catch { /* keep default */ }
     updateDoorLockUI();
-    doorLockToggle.classList.remove("hidden");
   }
   if ((isSolo || isResident) && publishButton) {
     publishButton.classList.remove("hidden");

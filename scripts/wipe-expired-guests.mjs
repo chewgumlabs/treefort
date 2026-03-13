@@ -99,6 +99,7 @@ for (const door of manifest.doors) {
   door.status = "vacant";
   delete door.name;
   delete door.moveInDate;
+  delete door.discordUserId;
   delete door.access;
 
   // Delete room directory

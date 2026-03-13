@@ -4,7 +4,7 @@ import {
   loadTreefortSources,
   readJson,
   validateApprovedRoomSnapshot,
-  validatePublicTreefortManifest,
+  validateTreefortRuntimeManifest,
   validatePublishBridgeContract,
 } from "./lib/manifests.mjs";
 import { compileRoomManifest, loadRoomCompilerInputs } from "./lib/room-compiler.mjs";
@@ -22,7 +22,7 @@ async function main() {
   const expectedRoomManifest = compileRoomManifest(state);
   const bridgeContract = await readJson("contracts/publish-bridge.example.json");
 
-  validatePublicTreefortManifest(generated);
+  validateTreefortRuntimeManifest(generated);
   validatePublishBridgeContract(bridgeContract);
 
   const reviewMap = new Map(reviews.map((review) => [review.submissionId, review]));
@@ -41,7 +41,7 @@ async function main() {
     }
   }
 
-  if (stable(generated) !== stable(expected)) {
+  if (generated.instance !== "hub" && stable(generated) !== stable(expected)) {
     throw new Error("data/treefort.json is out of date. Run `npm run build:treefort`.");
   }
 
