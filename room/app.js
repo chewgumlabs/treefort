@@ -537,7 +537,7 @@ function syncImportButton() {
   if (importRoomButton) {
     const label = importMode === "specialkey" ? "Turn in SpecialKey" : "Import Room";
     importRoomButton.setAttribute("aria-label", label);
-    importRoomButton.title = label;
+    importRoomButton.removeAttribute("title");
   }
 }
 
@@ -574,13 +574,13 @@ function syncExportButton(space) {
   if (questAction) {
     exportRoomButton.disabled = false;
     exportRoomButton.setAttribute("aria-label", questAction.label);
-    exportRoomButton.title = questAction.label;
+    exportRoomButton.removeAttribute("title");
     return;
   }
 
   exportRoomButton.disabled = !canExportRoomPackage(space);
   exportRoomButton.setAttribute("aria-label", "Export room");
-  exportRoomButton.title = "Export room";
+  exportRoomButton.removeAttribute("title");
 }
 
 function openImportPicker(mode = "auto") {
