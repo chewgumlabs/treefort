@@ -748,8 +748,14 @@ knockForm.addEventListener("submit", async (event) => {
   modalMessage.textContent = DIALOG["hub-wrong-passphrase"]?.text || "Wrong passphrase.";
 });
 
+function treefortManifestUrl() {
+  const url = new URL("./data/treefort.json", window.location.href);
+  url.searchParams.set("ts", String(Date.now()));
+  return url.toString();
+}
+
 async function loadTreefort() {
-  const response = await fetch("./data/treefort.json");
+  const response = await fetch(treefortManifestUrl(), { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Treefort manifest load failed with ${response.status}`);
   }
@@ -793,6 +799,23 @@ function primeWorldStartPosition() {
 }
 
 let cachedManifest = null;
+
+async function refreshTreefortIfChanged() {
+  if (document.hidden) {
+    return;
+  }
+
+  try {
+    const manifest = await loadTreefort();
+    const previous = cachedManifest ? JSON.stringify(cachedManifest) : "";
+    const next = JSON.stringify(manifest);
+    if (previous && previous !== next) {
+      window.location.reload();
+    }
+  } catch (error) {
+    console.warn("Treefort refresh skipped:", error);
+  }
+}
 
 
 // ── Elevator ──
@@ -1398,6 +1421,16 @@ async function init() {
 window.addEventListener("resize", () => {
   scheduleSkyRender();
   sizeWorld();
+});
+
+window.addEventListener("focus", () => {
+  void refreshTreefortIfChanged();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    void refreshTreefortIfChanged();
+  }
 });
 
 window.addEventListener("scroll", () => {
