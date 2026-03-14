@@ -57,18 +57,9 @@
     {
       "id": "guest-003",
       "type": "guest",
-      "status": "occupied",
+      "status": "vacant",
       "segment": 0,
-      "slot": "c",
-      "name": "icys_utopia's Room",
-      "moveInDate": "2026-03-13",
-      "discordUserId": "690020142045724691",
-      "access": {
-        "mode": "knock",
-        "hint": "Ask icys_utopia!",
-        "passphraseHash": "5bb65bb2635517bf0382d1baa5d32a898159938418b9c07ab40929c9e417c342",
-        "encryptedHref": "2n5ZfUNrG+5oGU9t2/Qi+ug90ylZfRyP42s1RisW7/HkHZD22UCBfWc+Cl1X0CE9ihrquZMCYN4nHEMqO12/ssiW/Q=="
-      }
+      "slot": "c"
     },
     {
       "id": "guest-004",
