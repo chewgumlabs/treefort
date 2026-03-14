@@ -2334,7 +2334,7 @@ function checkWaveAdvancement(space, evaluation) {
 
 function refreshAuthoringUI(space) {
   const canAuthor = space.revealState === "drawn";
-  const showFillLayer = space.revealState === "drawn" && (authorMode === "view" || authorMode === "paint");
+  const showFillLayer = space.revealState === "drawn" && (authorMode === "view" || authorMode === "paint" || authorMode === "labels");
   const hasGoals = getScoreGoals(space).length > 0;
   const showLabelsInView = authorMode === "view" && hasGoals;
   const leftPanelMode = authorMode === "view" ? (hasGoals ? "labels" : "") : authorMode;
